@@ -93,7 +93,7 @@ object TestSchema {
     "Query", fields[CharacterRepo, Unit](
       Field("hero", Character,
         arguments = EpisodeArg :: Nil,
-        resolve = (ctx) => ctx.ctx.getHero(ctx.argOpt(EpisodeArg))),
+        resolve = (ctx) => ctx.ctx.getHero(???/*ctx.argOpt(EpisodeArg)*/)),
       Field("human", OptionType(Human),
         arguments = ID :: Nil,
         resolve = ctx => ctx.ctx.getHuman(ctx arg ID)),

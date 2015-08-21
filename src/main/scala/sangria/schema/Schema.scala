@@ -242,24 +242,24 @@ object Argument {
       name: String,
       argumentType: InputType[T],
       description: String,
-      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T]): Argument[res.Res] =
+      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
     Argument(name, argumentType, Some(description), Some(defaultValue))
 
   def apply[T, Default](
       name: String,
       argumentType: InputType[T],
-      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T]): Argument[res.Res] =
+      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
     Argument(name, argumentType, None, Some(defaultValue))
 
   def apply[T](
       name: String,
       argumentType: InputType[T],
-      description: String)(implicit res: ArgumentType[T]): Argument[res.Res] =
+      description: String)(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
     Argument(name, argumentType, Some(description), None)
 
   def apply[T](
       name: String,
-      argumentType: InputType[T])(implicit res: ArgumentType[T]): Argument[res.Res] =
+      argumentType: InputType[T])(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
     Argument(name, argumentType, None, None)
 }
 
@@ -279,10 +279,12 @@ trait ArgumentTypeLowPrio {
   }
 }
 
+case class Arguments[T](argument: Seq[Argument[_]])(implicit ev: InputTypeUnmarshaller[T, _])
+
 case class EnumType[T](
     name: String,
     description: Option[String] = None,
-    values: List[EnumValue[T]]) extends InputType[T] with OutputType[T] with LeafType with NullableType with UnmodifiedType with Named {
+    values: List[EnumValue[T]]) extends InputType[EnumInput[T]] with OutputType[T] with LeafType with NullableType with UnmodifiedType with Named {
   lazy val byName = values groupBy (_.name) mapValues (_.head)
   lazy val byValue = values groupBy (_.value) mapValues (_.head)
 
@@ -299,6 +301,8 @@ case class EnumType[T](
 
   def coerceOutput(value: T) = ast.EnumValue(byValue(value).name)
 }
+
+sealed trait EnumInput[T]
 
 case class EnumValue[+T](
   name: String,
@@ -318,14 +322,14 @@ case class InputObjectType[T] private (
 object InputObjectType {
   type InputObjectRes = Map[String, Any]
 
-  def apply(name: String, fields: List[InputField[_]]): InputObjectType[InputObjectRes] =
+  def apply[T](name: String, fields: List[InputField[_]]): InputObjectType[T] =
     InputObjectType(name, None, fieldsFn = Named.checkFieldsFn(fields))
-  def apply(name: String, description: String, fields: List[InputField[_]]): InputObjectType[InputObjectRes] =
+  def apply[T](name: String, description: String, fields: List[InputField[_]]): InputObjectType[T] =
     InputObjectType(name, Some(description), fieldsFn = Named.checkFieldsFn(fields))
 
-  def apply(name: String, fieldsFn: () => List[InputField[_]]): InputObjectType[InputObjectRes] =
+  def apply[T](name: String, fieldsFn: () => List[InputField[_]]): InputObjectType[T] =
     InputObjectType(name, None, Named.checkFields(fieldsFn))
-  def apply(name: String, description: String, fieldsFn: () => List[InputField[_]]): InputObjectType[InputObjectRes] =
+  def apply[T](name: String, description: String, fieldsFn: () => List[InputField[_]]): InputObjectType[T] =
     InputObjectType(name, Some(description), Named.checkFields(fieldsFn))
 }
 

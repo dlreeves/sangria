@@ -50,12 +50,12 @@ class SprayJsonSupportSpec extends WordSpec with Matchers with AwaitSupport {
       SprayJsonResultMarshaller.isEmptyArrayNode(JsArray(Vector(JsString("aa")))) should be (false)
       SprayJsonResultMarshaller.arrayNode(JsString("aa") :: JsNumber(11) :: Nil) should be (JsArray(Vector(JsString("aa"), JsNumber(11))))
 
-      SprayJsonResultMarshaller.booleanNode(true) should be (JsBoolean(true))
-      SprayJsonResultMarshaller.intNode(111) should be (JsNumber(111))
-      SprayJsonResultMarshaller.floatNode(111.22D) should be (JsNumber(111.22D))
-      SprayJsonResultMarshaller.stringNode("qq") should be (JsString("qq"))
-      SprayJsonResultMarshaller.bigIntNode(BigInt("12323432432432")) should be (JsNumber(BigDecimal("12323432432432")))
-      SprayJsonResultMarshaller.bigDecimalNode(BigDecimal("12323432432432.2435454354543")) should be (JsNumber(BigDecimal("12323432432432.2435454354543")))
+      SprayJsonResultMarshaller.toBooleanNode(true) should be (JsBoolean(true))
+      SprayJsonResultMarshaller.toIntNode(111) should be (JsNumber(111))
+      SprayJsonResultMarshaller.toFloatNode(111.22D) should be (JsNumber(111.22D))
+      SprayJsonResultMarshaller.toStringNode("qq") should be (JsString("qq"))
+      SprayJsonResultMarshaller.toBigIntNode(BigInt("12323432432432")) should be (JsNumber(BigDecimal("12323432432432")))
+      SprayJsonResultMarshaller.toBigDecimalNode(BigDecimal("12323432432432.2435454354543")) should be (JsNumber(BigDecimal("12323432432432.2435454354543")))
 
       SprayJsonResultMarshaller.emptyMapNode should be (JsObject.empty)
       SprayJsonResultMarshaller.addMapNodeElem(JsObject(Map("aa" -> JsString("bb"))), "cc", JsNumber(321)) should be (

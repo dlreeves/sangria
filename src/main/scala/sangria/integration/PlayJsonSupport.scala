@@ -5,73 +5,83 @@ import sangria.execution.{InputUnmarshaller, ResultMarshaller}
 
 object PlayJsonSupport extends PlayJsonSupportLowPrioImplicits {
   implicit object PlayJsonResultMarshaller extends ResultMarshaller {
-    override type Node = JsValue
+    type Node = JsValue
 
-    override def addArrayNodeElem(array: JsValue, elem: JsValue) = array.asInstanceOf[JsArray].append(elem)
+    def emptyMapNode = JsObject(Seq.empty)
 
-    override def booleanNode(value: Boolean) = JsBoolean(value)
+    def mapNode(keyValues: Seq[(String, JsValue)]) = JsObject(keyValues)
+    def mapNodeOpt(keyValues: Seq[(String, Option[JsValue])]) = JsObject(keyValues collect {case (key, Some(value)) => key -> value})
 
-    override def emptyMapNode = JsObject(Seq.empty)
+    def addMapNodeElem(node: JsValue, key: String, value: JsValue, optional: Boolean) = node.asInstanceOf[JsObject] + (key -> value)
+    def addMapNodeElemOpt(node: JsValue, key: String, value: Option[JsValue], optional: Boolean) =
+      value match {
+        case Some(v) => node.asInstanceOf[JsObject] + (key -> v)
+        case None => node
+      }
 
-    override def arrayNode(values: Seq[JsValue]) = JsArray(values)
+    def isEmptyArrayNode(array: JsValue) = array.asInstanceOf[JsArray].value.isEmpty
+    def emptyArrayNode = JsArray(Seq.empty)
+    def addArrayNodeElem(array: JsValue, elem: JsValue, optional: Boolean) = array.asInstanceOf[JsArray].append(elem)
+    def arrayNode(values: Seq[JsValue], optional: Boolean) = JsArray(values)
 
-    override def mapNode(keyValues: Seq[(String, JsValue)]) = JsObject(keyValues)
+    def toBooleanNode(value: Boolean) = JsBoolean(value)
+    def toFloatNode(value: Double) = JsNumber(value)
+    def toStringNode(value: String) = JsString(value)
+    def toIntNode(value: Int) = JsNumber(value)
+    def toBigIntNode(value: BigInt) = JsNumber(BigDecimal(value))
+    def toBigDecimalNode(value: BigDecimal) = JsNumber(value)
+    def toEnumNode(rawValue: String, coercedValue: Any) = JsString(rawValue)
 
-    override def addMapNodeElem(node: JsValue, key: String, value: JsValue) = node.asInstanceOf[JsObject] + (key -> value)
+    def fromStringNode(value: JsValue) = value.asInstanceOf[JsString].value
+    def fromIntNode(value: JsValue) = value.asInstanceOf[JsNumber].value.intValue()
+    def fromBigIntNode(value: JsValue) = value.asInstanceOf[JsNumber].value.toBigInt()
+    def fromFloatNode(value: JsValue) = value.asInstanceOf[JsNumber].value.doubleValue()
+    def fromBigDecimalNode(value: JsValue) = value.asInstanceOf[JsNumber].value
+    def fromBooleanNode(value: JsValue) = value.asInstanceOf[JsBoolean].value
+    def fromArrayNode(arrayNode: JsValue) = arrayNode.asInstanceOf[JsArray].value
+    def fromMapNode(mapNode: JsValue) = mapNode.asInstanceOf[JsObject].value.toMap
 
-    override def floatNode(value: Double) = JsNumber(value)
+    def nullNode = JsNull
 
-    override def isEmptyArrayNode(array: JsValue) = array.asInstanceOf[JsArray].value.isEmpty
+    def renderCompact(node: JsValue) = Json.stringify(node)
+    def renderPretty(node: JsValue) = Json.prettyPrint(node)
 
-    override def emptyArrayNode = JsArray(Seq.empty)
-
-    override def stringNode(value: String) = JsString(value)
-
-    override def intNode(value: Int) = JsNumber(value)
-
-    override def nullNode = JsNull
-
-    override def renderCompact(node: JsValue) = Json.stringify(node)
-
-    override def renderPretty(node: JsValue) = Json.prettyPrint(node)
-
-    override def bigIntNode(value: BigInt) = JsNumber(BigDecimal(value))
-
-    override def bigDecimalNode(value: BigDecimal) = JsNumber(value)
+    def isNull(node: JsValue) = node == JsNull
+    def isNode(obj: Any) = obj.isInstanceOf[JsValue]
   }
 
   implicit object PlayJsonInputUnmarshaller extends InputUnmarshaller[JsValue] {
-    override type LeafNode = JsValue
+    type LeafNode = JsValue
 
-    override def isDefined(node: JsValue) = node != JsNull
+    def isDefined(node: JsValue) = node != JsNull
 
-    override def getScalarValue(node: JsValue) = node match {
+    def getScalarValue(node: JsValue) = node match {
       case JsBoolean(b) => b
       case JsNumber(d) => d.toBigIntExact getOrElse d
       case JsString(s) => s
       case _ => throw new IllegalStateException(s"$node is not a scalar value")
     }
 
-    override def isScalarNode(node: JsValue) = node match {
+    def isScalarNode(node: JsValue) = node match {
       case _: JsBoolean | _: JsNumber | _: JsString => true
       case _ => false
     }
 
-    override def isMapNode(node: JsValue) = node.isInstanceOf[JsObject]
+    def isMapNode(node: JsValue) = node.isInstanceOf[JsObject]
 
-    override def getListValue(node: JsValue) = node.asInstanceOf[JsArray].value
+    def getListValue(node: JsValue) = node.asInstanceOf[JsArray].value
 
-    override def render(node: JsValue) = Json.stringify(node)
+    def render(node: JsValue) = Json.stringify(node)
 
-    override def isArrayNode(node: JsValue) = node.isInstanceOf[JsArray]
+    def isArrayNode(node: JsValue) = node.isInstanceOf[JsArray]
 
-    override def getMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].value get key
+    def getMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].value get key
 
-    override def emptyNode = JsObject(Seq.empty)
+    def emptyNode = JsObject(Seq.empty)
 
-    override def getRootMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].value get key
+    def getRootMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].value get key
 
-    override def getMapKeys(node: JsValue) = node.asInstanceOf[JsObject].keys
+    def getMapKeys(node: JsValue) = node.asInstanceOf[JsObject].keys
   }
 }
 

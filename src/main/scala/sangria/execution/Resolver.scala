@@ -70,11 +70,11 @@ class Resolver[Ctx](
           case (acc @ (Result(_, None), _), _) => Future.successful(acc)
           case (acc, (name, (origField, _))) if tpe.getField(schema, origField.name).isEmpty => Future.successful(acc)
           case ((Result(errors, s @ Some(acc)), uc), (name, (origField, Failure(error)))) =>
-            Future.successful(Result(errors.add(path :+ name, error), if (isOptional(tpe, origField.name)) Some(marshaller.addMapNodeElem(acc, origField.outputName, marshaller.nullNode)) else None) -> uc)
+            Future.successful(Result(errors.add(path :+ name, error), if (isOptional(tpe, origField.name)) Some(marshaller.addMapNodeElem(acc, origField.outputName, marshaller.nullNode, optional = true)) else None) -> uc)
           case ((accRes @ Result(errors, s @ Some(acc)), uc), (name, (origField, Success(fields)))) =>
             resolveField(uc, tpe, path :+ name, value, errors, name, fields) match {
               case (updatedErrors, None, _) if isOptional(tpe, origField.name) =>
-                Future.successful(Result(updatedErrors, Some(marshaller.addMapNodeElem(acc, fields.head.outputName, marshaller.nullNode))) -> uc)
+                Future.successful(Result(updatedErrors, Some(marshaller.addMapNodeElem(acc, fields.head.outputName, marshaller.nullNode, optional = true))) -> uc)
               case (updatedErrors, None, _) => Future.successful(Result(updatedErrors, None), uc)
               case (updatedErrors, Some(result), newUc) =>
                 val sfield = tpe.getField(schema, origField.name).get
@@ -264,7 +264,8 @@ class Resolver[Ctx](
       tpe: OutputType[_],
       field: Field[Ctx, _],
       value: Any,
-      userCtx: Ctx): Resolve  =
+      userCtx: Ctx,
+      optional: Boolean = false): Resolve  =
     tpe match {
       case OptionType(optTpe) =>
         val actualValue = value match {
@@ -273,7 +274,7 @@ class Resolver[Ctx](
         }
 
         actualValue match {
-          case Some(someValue) => resolveValue(path, astFields, optTpe, field, someValue, userCtx)
+          case Some(someValue) => resolveValue(path, astFields, optTpe, field, someValue, userCtx, true)
           case None => Result(ErrorRegistry.empty, None)
         }
       case ListType(listTpe) =>
@@ -285,7 +286,7 @@ class Resolver[Ctx](
             case other => Seq(other)
           }
 
-          val res = actualValue map (resolveValue(path, astFields, listTpe, field, _, userCtx))
+          val res = actualValue map (resolveValue(path, astFields, listTpe, field, _, userCtx, false))
           val simpleRes = res.collect { case r: Result => r}
 
           if (simpleRes.size == res.size)
@@ -302,13 +303,13 @@ class Resolver[Ctx](
         }
       case scalar: ScalarType[Any @unchecked] =>
         try {
-          Result(ErrorRegistry.empty, if (value == null) None else Some(marshalValue(scalar.coerceOutput(value), marshaller)))
+          Result(ErrorRegistry.empty, if (value == null) None else Some(marshalValue(scalar.coerceOutput(value), marshaller, optional)))
         } catch {
           case NonFatal(e) => Result(ErrorRegistry(path, e), None)
         }
       case enum: EnumType[Any @unchecked] =>
         try {
-          Result(ErrorRegistry.empty, if (value == null) None else Some(marshalValue(enum.coerceOutput(value), marshaller)))
+          Result(ErrorRegistry.empty, if (value == null) None else Some(marshalValue(enum.coerceOutput(value), marshaller, optional)))
         } catch {
           case NonFatal(e) => Result(ErrorRegistry(path, e), None)
         }
@@ -322,7 +323,7 @@ class Resolver[Ctx](
         }
       case abst: AbstractType =>
         abst.typeOf(value, schema) match {
-          case Some(obj) => resolveValue(path, astFields, obj, field, value, userCtx)
+          case Some(obj) => resolveValue(path, astFields, obj, field, value, userCtx, optional)
           case None => Result(ErrorRegistry(path,
             new ExecutionError(s"Can't find appropriate subtype for field at path ${path mkString ", "}", sourceMapper, astFields.head.position.toList)), None)
         }
@@ -425,9 +426,9 @@ class Resolver[Ctx](
               errors.add(other.errors),
         value =
             if (optional && other.value.isEmpty)
-              value map (marshaller.addMapNodeElem(_, key, marshaller.nullNode))
+              value map (marshaller.addMapNodeElem(_, key, marshaller.nullNode, optional = optional))
             else
-              for {myVal <- value; otherVal <- other.value} yield marshaller.addMapNodeElem(myVal, key, otherVal))
+              for {myVal <- value; otherVal <- other.value} yield marshaller.addMapNodeElem(myVal, key, otherVal, optional = optional))
 
     def addToList(other: Result, optional: Boolean, path: List[String], position: Option[Position]) = copy(
       errors =
@@ -437,25 +438,25 @@ class Resolver[Ctx](
             errors.add(other.errors),
       value =
           if (optional && other.value.isEmpty)
-            value map (marshaller.addArrayNodeElem(_, marshaller.nullNode))
+            value map (marshaller.addArrayNodeElem(_, marshaller.nullNode, optional))
           else
-            for {myVal <- value; otherVal <- other.value} yield marshaller.addArrayNodeElem(myVal, otherVal))
+            for {myVal <- value; otherVal <- other.value} yield marshaller.addArrayNodeElem(myVal, otherVal, optional))
   }
 }
 
 case class MappedCtxUpdate[Ctx, Val, NewVal](ctxFn: Val => Ctx, mapFn: Val => NewVal)
 
 object Resolver {
-  def marshalValue(value: ast.Value, marshaller: ResultMarshaller): marshaller.Node = value match {
-    case ast.StringValue(str, _) => marshaller.stringNode(str)
-    case ast.IntValue(i, _) => marshaller.intNode(i)
-    case ast.BigIntValue(i, _) => marshaller.bigIntNode(i)
-    case ast.FloatValue(f, _) => marshaller.floatNode(f)
-    case ast.BigDecimalValue(f, _) => marshaller.bigDecimalNode(f)
-    case ast.BooleanValue(b, _) => marshaller.booleanNode(b)
-    case ast.EnumValue(enum, _) => marshaller.stringNode(enum)
-    case ast.ListValue(values, _) => marshaller.arrayNode(values map (marshalValue(_, marshaller)))
-    case ast.ObjectValue(values, _) => marshaller.mapNode(values map (v => v.name -> marshalValue(v.value, marshaller)))
+  def marshalValue(value: ast.Value, marshaller: ResultMarshaller, optional: Boolean): marshaller.Node = value match {
+    case ast.StringValue(str, _) => marshaller.toStringNode(str)
+    case ast.IntValue(i, _) => marshaller.toIntNode(i)
+    case ast.BigIntValue(i, _) => marshaller.toBigIntNode(i)
+    case ast.FloatValue(f, _) => marshaller.toFloatNode(f)
+    case ast.BigDecimalValue(f, _) => marshaller.toBigDecimalNode(f)
+    case ast.BooleanValue(b, _) => marshaller.toBooleanNode(b)
+    case ast.EnumValue(enum, _) => marshaller.toStringNode(enum)
+    case ast.ListValue(values, _) => marshaller.arrayNode(values map (marshalValue(_, marshaller, false)), optional)
+    case ast.ObjectValue(values, _) => marshaller.mapNode(values map (v => v.name -> marshalValue(v.value, marshaller, false)))
     case ast.VariableValue(_, _) => throw new IllegalStateException("Can't marshall variable values!")
   }
 }

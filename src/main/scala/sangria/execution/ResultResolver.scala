@@ -10,16 +10,16 @@ class ResultResolver(val marshaller: ResultMarshaller, exceptionHandler: Partial
       case (acc, ErrorPath(path, error, location)) =>
         val withPath =
           if (path.nonEmpty)
-            marshaller.addMapNodeElem(error, "field", marshaller.stringNode(path mkString "."))
+            marshaller.addMapNodeElem(error, "field", marshaller.toStringNode(path mkString "."), optional = false)
           else
             error
 
         val withLocations = location match {
-          case Some(node) => marshaller.addMapNodeElem(withPath, "locations", node)
+          case Some(node) => marshaller.addMapNodeElem(withPath, "locations", node, optional = false)
           case None => withPath
         }
 
-        marshaller.addArrayNodeElem(acc, withLocations)
+        marshaller.addArrayNodeElem(acc, withLocations, optional = false)
     }
 
     if (marshaller.isEmptyArrayNode(marshalled)) None else Some(marshalled)
@@ -30,12 +30,12 @@ class ResultResolver(val marshaller: ResultMarshaller, exceptionHandler: Partial
     val empty = marshaller.emptyMapNode
 
     val withData = data match {
-      case Some(d) => marshaller.addMapNodeElem(empty, "data", d)
-      case None => marshaller.addMapNodeElem(empty, "data", marshaller.nullNode)
+      case Some(d) => marshaller.addMapNodeElem(empty, "data", d, optional = false)
+      case None => marshaller.addMapNodeElem(empty, "data", marshaller.nullNode, optional = false)
     }
 
     errors match {
-      case Some(e) => marshaller.addMapNodeElem(withData, "errors", e)
+      case Some(e) => marshaller.addMapNodeElem(withData, "errors", e, optional = false)
       case None => withData
     }
   }
@@ -45,19 +45,19 @@ class ResultResolver(val marshaller: ResultMarshaller, exceptionHandler: Partial
 
   def handleException(exception: Throwable): marshaller.Node = exception match {
     case e: UserFacingError =>
-      marshaller.mapNode(Seq("message" -> marshaller.stringNode(e.getMessage)))
+      marshaller.mapNode(Seq("message" -> marshaller.toStringNode(e.getMessage)))
     case e if exceptionHandler isDefinedAt (marshaller -> e) =>
       val handeled = exceptionHandler(marshaller -> e)
 
-      marshaller.mapNode(Seq("message" -> marshaller.stringNode(handeled.message)) ++ handeled.additionalFields.toSeq.asInstanceOf[Seq[(String, marshaller.Node)]])
+      marshaller.mapNode(Seq("message" -> marshaller.toStringNode(handeled.message)) ++ handeled.additionalFields.toSeq.asInstanceOf[Seq[(String, marshaller.Node)]])
     case e =>
       e.printStackTrace() // todo proper logging?
-      marshaller.mapNode(Seq("message" -> marshaller.stringNode("Internal server error")))
+      marshaller.mapNode(Seq("message" -> marshaller.toStringNode("Internal server error")))
   }
 
   case class ErrorRegistry(errorList: List[ErrorPath]) {
     def add(path: List[String], error: String) =
-      copy(errorList:+ ErrorPath(path, marshaller.mapNode(Seq("message" -> marshaller.stringNode(error))), None))
+      copy(errorList:+ ErrorPath(path, marshaller.mapNode(Seq("message" -> marshaller.toStringNode(error))), None))
 
     def add(path: List[String], error: Throwable) =
       copy(errorList ++ createErrorPaths(path, error))
@@ -71,7 +71,7 @@ class ResultResolver(val marshaller: ResultMarshaller, exceptionHandler: Partial
     def createErrorPaths(path: List[String], e: Throwable) = e match {
       case e: WithViolations if e.violations.nonEmpty =>
         e.violations map { v =>
-          ErrorPath(path, marshaller.mapNode(Seq("message" -> marshaller.stringNode(v.errorMessage))), getLocations(v))
+          ErrorPath(path, marshaller.mapNode(Seq("message" -> marshaller.toStringNode(v.errorMessage))), getLocations(v))
         }
       case other =>
         ErrorPath(path, handleException(other), getLocations(other)) :: Nil
@@ -97,14 +97,14 @@ class ResultResolver(val marshaller: ResultMarshaller, exceptionHandler: Partial
 
     def marshallPositions(px: List[Position]) =
       px.foldLeft(marshaller.emptyArrayNode) {
-        case (acc, p) => marshaller.addArrayNodeElem(acc, createLocation(p))
+        case (acc, p) => marshaller.addArrayNodeElem(acc, createLocation(p), optional = false)
       }
 
     def createLocation(pos: Position) = marshaller.mapNode(Seq(
-      "line" -> marshaller.intNode(pos.line),
-      "column" -> marshaller.intNode(pos.column)))
+      "line" -> marshaller.toIntNode(pos.line),
+      "column" -> marshaller.toIntNode(pos.column)))
 
-    def singleLocation(pos: Position) = marshaller.arrayNode(Seq(createLocation(pos)))
+    def singleLocation(pos: Position) = marshaller.arrayNode(Seq(createLocation(pos)), optional = false)
   }
 
   object ErrorRegistry {

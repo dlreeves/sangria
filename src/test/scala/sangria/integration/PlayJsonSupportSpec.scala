@@ -49,12 +49,12 @@ class PlayJsonSupportSpec extends WordSpec with Matchers with AwaitSupport {
       PlayJsonResultMarshaller.isEmptyArrayNode(JsArray(JsString("aa") :: Nil)) should be (false)
       PlayJsonResultMarshaller.arrayNode(JsString("aa") :: JsNumber(11) :: Nil) should be (JsArray(JsString("aa") :: JsNumber(11) :: Nil))
 
-      PlayJsonResultMarshaller.booleanNode(true) should be (JsBoolean(true))
-      PlayJsonResultMarshaller.intNode(111) should be (JsNumber(111))
-      PlayJsonResultMarshaller.floatNode(111.22D) should be (JsNumber(111.22D))
-      PlayJsonResultMarshaller.stringNode("qq") should be (JsString("qq"))
-      PlayJsonResultMarshaller.bigIntNode(BigInt("12323432432432")) should be (JsNumber(BigDecimal("12323432432432")))
-      PlayJsonResultMarshaller.bigDecimalNode(BigDecimal("12323432432432.2435454354543")) should be (JsNumber(BigDecimal("12323432432432.2435454354543")))
+      PlayJsonResultMarshaller.toBooleanNode(true) should be (JsBoolean(true))
+      PlayJsonResultMarshaller.toIntNode(111) should be (JsNumber(111))
+      PlayJsonResultMarshaller.toFloatNode(111.22D) should be (JsNumber(111.22D))
+      PlayJsonResultMarshaller.toStringNode("qq") should be (JsString("qq"))
+      PlayJsonResultMarshaller.toBigIntNode(BigInt("12323432432432")) should be (JsNumber(BigDecimal("12323432432432")))
+      PlayJsonResultMarshaller.toBigDecimalNode(BigDecimal("12323432432432.2435454354543")) should be (JsNumber(BigDecimal("12323432432432.2435454354543")))
 
       PlayJsonResultMarshaller.emptyMapNode should be (JsObject(Nil))
       PlayJsonResultMarshaller.addMapNodeElem(JsObject(Seq("aa" -> JsString("bb"))), "cc", JsNumber(321)) should be (

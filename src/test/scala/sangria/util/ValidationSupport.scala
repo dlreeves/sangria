@@ -77,7 +77,7 @@ trait ValidationSupport extends Matchers {
 
   val HumanOrAlien = UnionType("HumanOrAlien", types = Human :: Alien :: Nil)
 
-  val ComplexInput = InputObjectType("ComplexInput", List(
+  val ComplexInput = InputObjectType[Map[String, Any]]("ComplexInput", List(
     InputField("requiredField", BooleanType),
     InputField("intField", OptionInputType(IntType)),
     InputField("stringField", OptionInputType(StringType)),

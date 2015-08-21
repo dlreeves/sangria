@@ -125,32 +125,32 @@ trait WithInputTypeRendering {
     m.renderPretty(renderInputValue(value, tpe, m))
 
   def renderInputValue[T](value: T, tpe: InputType[T], m: ResultMarshaller = marshaller): m.Node = {
-    def loop(t: InputType[_], v: Any): m.Node = t match {
+    def loop(t: InputType[_], v: Any, optional: Boolean): m.Node = t match {
       case _ if value == null => m.nullNode
-      case s: ScalarType[Any @unchecked] => Resolver.marshalValue(s.coerceOutput(v), m)
-      case e: EnumType[Any @unchecked] => Resolver.marshalValue(e.coerceOutput(v), m)
+      case s: ScalarType[Any @unchecked] => Resolver.marshalValue(s.coerceOutput(v), m, optional)
+      case e: EnumType[Any @unchecked] => Resolver.marshalValue(e.coerceOutput(v), m, optional)
       case io: InputObjectType[_] =>
         val mapValue = v.asInstanceOf[Map[String, Any]]
 
         io.fields.foldLeft(m.emptyMapNode) {
           case (acc, field) if mapValue contains field.name =>
-            m.addMapNodeElem(acc, field.name, loop(field.fieldType, mapValue(field.name)))
+            m.addMapNodeElem(acc, field.name, loop(field.fieldType, mapValue(field.name), false), optional)
           case (acc, _) => acc
         }
       case l: ListInputType[_] =>
         val listValue = v.asInstanceOf[Seq[Any]]
 
         listValue.foldLeft(m.emptyArrayNode) {
-          case (acc, value) => m.addArrayNodeElem(acc, loop(l.ofType, value))
+          case (acc, value) => m.addArrayNodeElem(acc, loop(l.ofType, value, false), optional)
         }
       case o: OptionInputType[_] => v match {
-        case Some(optVal) => loop(o.ofType, optVal)
+        case Some(optVal) => loop(o.ofType, optVal, true)
         case None => m.nullNode
-        case other => loop(o.ofType, other)
+        case other => loop(o.ofType, other, true)
       }
     }
 
-    loop(tpe, value)
+    loop(tpe, value, false)
   }
 }
 

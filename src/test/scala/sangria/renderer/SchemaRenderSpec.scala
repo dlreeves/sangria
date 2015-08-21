@@ -279,7 +279,7 @@ class SchemaRenderSpec extends WordSpec with Matchers with AwaitSupport {
     }
 
     "Print Input Type" in {
-      val inputType = InputObjectType("InputType", List(
+      val inputType = InputObjectType[Map[String, Any]]("InputType", List(
         InputField("int", OptionInputType(IntType))
       ))
 

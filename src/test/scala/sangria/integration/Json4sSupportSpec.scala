@@ -50,12 +50,12 @@ class Json4sSupportSpec extends WordSpec with Matchers with AwaitSupport {
       Json4sResultMarshaller.isEmptyArrayNode(JArray(JString("aa") :: Nil)) should be (false)
       Json4sResultMarshaller.arrayNode(JString("aa") :: JInt(11) :: Nil) should be (JArray(JString("aa") :: JInt(11) :: Nil))
 
-      Json4sResultMarshaller.booleanNode(true) should be (JBool(true))
-      Json4sResultMarshaller.intNode(111) should be (JInt(111))
-      Json4sResultMarshaller.floatNode(111.22D) should be (JDouble(111.22D))
-      Json4sResultMarshaller.stringNode("qq") should be (JString("qq"))
-      Json4sResultMarshaller.bigIntNode(BigInt("12323432432432")) should be (JInt(BigInt("12323432432432")))
-      Json4sResultMarshaller.bigDecimalNode(BigDecimal("12323432432432.2435454354543")) should be (JDecimal(BigDecimal("12323432432432.2435454354543")))
+      Json4sResultMarshaller.toBooleanNode(true) should be (JBool(true))
+      Json4sResultMarshaller.toIntNode(111) should be (JInt(111))
+      Json4sResultMarshaller.toFloatNode(111.22D) should be (JDouble(111.22D))
+      Json4sResultMarshaller.toStringNode("qq") should be (JString("qq"))
+      Json4sResultMarshaller.toBigIntNode(BigInt("12323432432432")) should be (JInt(BigInt("12323432432432")))
+      Json4sResultMarshaller.toBigDecimalNode(BigDecimal("12323432432432.2435454354543")) should be (JDecimal(BigDecimal("12323432432432.2435454354543")))
 
       Json4sResultMarshaller.emptyMapNode should be (JObject(Nil))
       Json4sResultMarshaller.addMapNodeElem(JObject("aa" -> JString("bb")), "cc", JInt(321)) should be (

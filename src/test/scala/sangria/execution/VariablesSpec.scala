@@ -12,7 +12,7 @@ import scala.util.Success
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class VariablesSpec extends WordSpec with Matchers with AwaitSupport with GraphQlSupport {
-  val TestInputObject = InputObjectType("TestInputObject", List(
+  val TestInputObject = InputObjectType[Map[String, Any]]("TestInputObject", List(
     InputField("a", OptionInputType(StringType)),
     InputField("b", OptionInputType(ListInputType(OptionInputType(StringType)))),
     InputField("c", StringType)))

@@ -7,73 +7,84 @@ import spray.json._
 object SprayJsonSupport extends SprayJsonSupportLowPrioImplicits {
 
   implicit object SprayJsonResultMarshaller extends ResultMarshaller {
-    override type Node = JsValue
+    type Node = JsValue
 
-    override def addArrayNodeElem(array: JsValue, elem: JsValue) = JsArray(array.asInstanceOf[JsArray].elements :+ elem)
+    def emptyMapNode = JsObject.empty
 
-    override def booleanNode(value: Boolean) = JsBoolean(value)
+    def mapNode(keyValues: Seq[(String, JsValue)]) = JsObject(keyValues: _*)
+    def mapNodeOpt(keyValues: Seq[(String, Option[JsValue])]) = JsObject(keyValues.collect{case (key, Some(value)) => key -> value}: _*)
 
-    override def emptyMapNode = JsObject.empty
+    def addMapNodeElem(node: JsValue, key: String, value: JsValue, optional: Boolean) = JsObject(node.asInstanceOf[JsObject].fields + (key -> value))
+    def addMapNodeElemOpt(node: JsValue, key: String, value: Option[JsValue], optional: Boolean) =
+      value match {
+        case Some(v) => JsObject(node.asInstanceOf[JsObject].fields + (key -> v))
+        case None => node
+      }
 
-    override def arrayNode(values: Seq[JsValue]) = JsArray(values.toVector)
+    def addArrayNodeElem(array: JsValue, elem: JsValue, optional: Boolean) = JsArray(array.asInstanceOf[JsArray].elements :+ elem)
+    def arrayNode(values: Seq[JsValue], optional: Boolean) = JsArray(values.toVector)
+    def isEmptyArrayNode(array: JsValue) = array.asInstanceOf[JsArray].elements.isEmpty
+    def emptyArrayNode = JsArray.empty
 
-    override def mapNode(keyValues: Seq[(String, JsValue)]) = JsObject(keyValues: _*)
+    def toBooleanNode(value: Boolean) = JsBoolean(value)
+    def toFloatNode(value: Double) = JsNumber(value)
+    def toStringNode(value: String) = JsString(value)
+    def toIntNode(value: Int) = JsNumber(value)
+    def toBigIntNode(value: BigInt) = JsNumber(value)
+    def toBigDecimalNode(value: BigDecimal) = JsNumber(value)
+    def toEnumNode(rawValue: String, coercedValue: Any) = JsString(rawValue)
 
-    override def addMapNodeElem(node: JsValue, key: String, value: JsValue) = JsObject(node.asInstanceOf[JsObject].fields + (key -> value))
+    def fromStringNode(value: JsValue) = value.asInstanceOf[JsString].value
+    def fromIntNode(value: JsValue) = value.asInstanceOf[JsNumber].value.intValue()
+    def fromBigIntNode(value: JsValue) = value.asInstanceOf[JsNumber].value.toBigInt()
+    def fromFloatNode(value: JsValue) = value.asInstanceOf[JsNumber].value.doubleValue()
+    def fromBigDecimalNode(value: JsValue) = value.asInstanceOf[JsNumber].value
+    def fromBooleanNode(value: JsValue) = value.asInstanceOf[JsBoolean].value
+    def fromArrayNode(arrayNode: JsValue) = arrayNode.asInstanceOf[JsArray].elements
+    def fromMapNode(mapNode: JsValue) = mapNode.asInstanceOf[JsObject].fields
 
-    override def floatNode(value: Double) = JsNumber(value)
+    def nullNode = JsNull
 
-    override def isEmptyArrayNode(array: JsValue) = array.asInstanceOf[JsArray].elements.isEmpty
+    def renderCompact(node: JsValue) = node.compactPrint
+    def renderPretty(node: JsValue) = node.prettyPrint
 
-    override def emptyArrayNode = JsArray.empty
+    def isNull(node: Node) = node == JsNull
+    def isNode(obj: Any) = obj.isInstanceOf[JsValue]
 
-    override def stringNode(value: String) = JsString(value)
-
-    override def intNode(value: Int) = JsNumber(value)
-
-    override def nullNode = JsNull
-
-    override def renderCompact(node: JsValue) = node.compactPrint
-
-    override def renderPretty(node: JsValue) = node.prettyPrint
-
-    override def bigIntNode(value: BigInt) = JsNumber(value)
-
-    override def bigDecimalNode(value: BigDecimal) = JsNumber(value)
   }
 
   implicit object SprayJsonInputUnmarshaller extends InputUnmarshaller[JsValue] {
-    override type LeafNode = JsValue
+    type LeafNode = JsValue
 
-    override def isDefined(node: JsValue) = node != JsNull
+    def isDefined(node: JsValue) = node != JsNull
 
-    override def getScalarValue(node: JsValue) = node match {
+    def getScalarValue(node: JsValue) = node match {
       case JsBoolean(b) => b
       case JsNumber(d) => d.toBigIntExact getOrElse d
       case JsString(s) => s
       case _ => throw new IllegalStateException(s"$node is not a scalar value")
     }
 
-    override def isScalarNode(node: JsValue) = node match {
+    def isScalarNode(node: JsValue) = node match {
       case _: JsBoolean | _: JsNumber | _: JsString => true
       case _ => false
     }
 
-    override def isMapNode(node: JsValue) = node.isInstanceOf[JsObject]
+    def isMapNode(node: JsValue) = node.isInstanceOf[JsObject]
 
-    override def getListValue(node: JsValue) = node.asInstanceOf[JsArray].elements
+    def getListValue(node: JsValue) = node.asInstanceOf[JsArray].elements
 
-    override def render(node: JsValue) = node.compactPrint
+    def render(node: JsValue) = node.compactPrint
 
-    override def isArrayNode(node: JsValue) = node.isInstanceOf[JsArray]
+    def isArrayNode(node: JsValue) = node.isInstanceOf[JsArray]
 
-    override def getMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].fields get key
+    def getMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].fields get key
 
-    override def emptyNode = JsObject.empty
+    def emptyNode = JsObject.empty
 
-    override def getRootMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].fields get key
+    def getRootMapValue(node: JsValue, key: String) = node.asInstanceOf[JsObject].fields get key
 
-    override def getMapKeys(node: JsValue) = node.asInstanceOf[JsObject].fields.keySet
+    def getMapKeys(node: JsValue) = node.asInstanceOf[JsObject].fields.keySet
   }
 }
 

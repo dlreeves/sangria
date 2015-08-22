@@ -1,5 +1,6 @@
 package sangria
 
+import sangria.schema.InputTypeUnmarshaller.InputScalaResultMarshaller
 import sangria.validation._
 
 package object schema {
@@ -134,21 +135,33 @@ package object schema {
 
   val IfArg = Argument("if", BooleanType, "Included when true.")
 
-  val IncludeDirective = Directive("include",
+  case class Inclusion(ifCond: Boolean)
+
+  object Inclusion {
+    implicit object InclusionUnmarshaller extends InputTypeUnmarshaller[Inclusion, InputScalaResultMarshaller.type] {
+      type Result = Inclusion
+
+      override def marshaller = InputScalaResultMarshaller
+      override def unmarshal(marshaller: InputScalaResultMarshaller.type)(node: Option[marshaller.Node]) =
+        Inclusion(Args(marshaller.fromMapNode(node.get)).arg(IfArg))
+    }
+  }
+
+  val IncludeDirective = Directive[Inclusion]("include",
     description = Some("Directs the executor to include this field or fragment only when the `if` argument is true."),
     arguments = IfArg :: Nil,
     onOperation = false,
     onFragment = true,
     onField = true,
-    shouldInclude = ctx => ctx.arg[Boolean](IfArg))
+    shouldInclude = ctx => ctx.args.ifCond)
 
-  val SkipDirective = Directive("skip",
+  val SkipDirective = Directive[Inclusion]("skip",
     description = Some("Directs the executor to skip this field or fragment when the `if` argument is true."),
     arguments = IfArg :: Nil,
     onOperation = false,
     onFragment = true,
     onField = true,
-    shouldInclude = ctx => !ctx.arg[Boolean](IfArg))
+    shouldInclude = ctx => !ctx.args.ifCond)
 
   val BuiltinDirectives = IncludeDirective :: SkipDirective :: Nil
 

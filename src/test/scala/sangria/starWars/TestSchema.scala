@@ -26,16 +26,16 @@ object TestSchema {
       "A character in the Star Wars Trilogy",
       () => List[Field[Unit, TestData.Character]](
         Field("id", StringType,
-          Some("The id of the character."),
+          Some("The id of the character."))(
           resolve = _.value.id),
         Field("name", OptionType(StringType),
-          Some("The name of the character."),
+          Some("The name of the character."))(
           resolve = _.value.name),
         Field("friends", OptionType(ListType(OptionType(Character))),
-          Some("The friends of the character, or an empty list if they have none."),
+          Some("The friends of the character, or an empty list if they have none."))(
           resolve = ctx => DeferFriends(ctx.value.friends)),
         Field("appearsIn", OptionType(ListType(OptionType(EpisodeEnum))),
-          Some("Which movies they appear in."),
+          Some("Which movies they appear in."))(
           resolve = _.value.appearsIn map (e => Some(e)))
       ))
 
@@ -45,19 +45,19 @@ object TestSchema {
       "A humanoid creature in the Star Wars universe.",
       fields[Unit, Human](
         Field("id", StringType,
-          Some("The id of the human."),
+          Some("The id of the human."))(
           resolve = _.value.id),
         Field("name", OptionType(StringType),
-          Some("The name of the human."),
+          Some("The name of the human."))(
           resolve = _.value.name),
         Field("friends", OptionType(ListType(OptionType(Character))),
-          Some("The friends of the human, or an empty list if they have none."),
+          Some("The friends of the human, or an empty list if they have none."))(
           resolve = (ctx) => DeferFriends(ctx.value.friends)),
         Field("appearsIn", OptionType(ListType(OptionType(EpisodeEnum))),
-          Some("Which movies they appear in."),
+          Some("Which movies they appear in."))(
           resolve = _.value.appearsIn map (e => Some(e))),
         Field("homePlanet", OptionType(StringType),
-          Some("The home planet of the human, or null if unknown."),
+          Some("The home planet of the human, or null if unknown."))(
           resolve = _.value.homePlanet)
       ),
       interfaces[Unit, Human](Character))
@@ -66,21 +66,19 @@ object TestSchema {
     "Droid",
     "A mechanical creature in the Star Wars universe.",
     fields[Unit, Droid](
-      Field("id", StringType,
-        Some("The id of the droid."),
-        resolve = Projection("_id", _.value.id)),
-      Field("name", OptionType(StringType),
-        Some("The name of the droid."),
-        resolve = ctx => Future.successful(ctx.value.name)),
+      Field("id", StringType, Some("The id of the droid."))(
+        Projection("_id", _.value.id)),
+      Field("name", OptionType(StringType), Some("The name of the droid."))(
+        ctx => Future.successful(ctx.value.name)),
       Field("friends", OptionType(ListType(OptionType(Character))),
-        Some("The friends of the droid, or an empty list if they have none."),
-        resolve = ctx => DeferFriends(ctx.value.friends)),
+        Some("The friends of the droid, or an empty list if they have none."))(
+        ctx => DeferFriends(ctx.value.friends)),
       Field("appearsIn", OptionType(ListType(OptionType(EpisodeEnum))),
-        Some("Which movies they appear in."),
-        resolve = _.value.appearsIn map (e => Some(e))),
+        Some("Which movies they appear in."))(
+        _.value.appearsIn map (e => Some(e))),
       Field("primaryFunction", OptionType(StringType),
-        Some("The primary function of the droid."),
-        resolve = _.value.primaryFunction)
+        Some("The primary function of the droid."))(
+        _.value.primaryFunction)
     ),
     interfaces[Unit, Droid](Character))
 
@@ -91,15 +89,12 @@ object TestSchema {
 
   val Query = ObjectType[CharacterRepo, Unit](
     "Query", fields[CharacterRepo, Unit](
-      Field("hero", Character,
-        arguments = EpisodeArg :: Nil,
-        resolve = (ctx) => ctx.ctx.getHero(???/*ctx.argOpt(EpisodeArg)*/)),
-      Field("human", OptionType(Human),
-        arguments = ID :: Nil,
-        resolve = ctx => ctx.ctx.getHuman(ctx arg ID)),
-      Field("droid", Droid,
-        arguments = ID :: Nil,
-        resolve = Projector((ctx, f)=> ctx.ctx.getDroid(ctx arg ID).get))
+      Field("hero", Character, arguments = EpisodeArg :: Nil)(
+        resolve = ctx => ctx.ctx.getHero(ctx.args.arg(EpisodeArg))),
+      Field("human", OptionType(Human), arguments = ID :: Nil)(
+        resolve = ctx => ctx.ctx.getHuman(ctx.args arg ID)),
+      Field("droid", Droid, arguments = ID :: Nil)(
+        resolve = Projector((ctx, f)=> ctx.ctx.getDroid(ctx.args arg ID).get))
     ))
 
   val StarWarsSchema = Schema(Query)

@@ -44,45 +44,44 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
   }
 
   val DeepDataType = ObjectType("DeepDataType", () => fields[Ctx, DeepTestSubject](
-    Field("a", OptionType(StringType), resolve = _.value.a),
-    Field("b", OptionType(StringType), resolve = _.value.b),
-    Field("c", OptionType(ListType(OptionType(StringType))), resolve = _.value.c),
-    Field("color", StringType, resolve = _.value.color),
-    Field("ctxColor", OptionType(StringType), resolve = _.ctx.color),
-    Field("deeper", OptionType(ListType(OptionType(DataType))), resolve = _.value.deeper)
+    Field("a", OptionType(StringType))(_.value.a),
+    Field("b", OptionType(StringType))(_.value.b),
+    Field("c", OptionType(ListType(OptionType(StringType))))(_.value.c),
+    Field("color", StringType)(_.value.color),
+    Field("ctxColor", OptionType(StringType))(_.ctx.color),
+    Field("deeper", OptionType(ListType(OptionType(DataType))))(_.value.deeper)
   ))
 
   val DataType: ObjectType[Ctx, TestSubject] = ObjectType("DataType", () => fields[Ctx, TestSubject](
-    Field("a", OptionType(StringType), resolve = _.value.a),
-    Field("b", OptionType(StringType), resolve = _.value.b),
-    Field("c", OptionType(StringType), resolve = _.value.c),
-    Field("d", OptionType(StringType), resolve = _.value.d),
-    Field("e", OptionType(StringType), resolve = _.value.e),
-    Field("f", OptionType(StringType), resolve = _.value.f),
-    Field("ctxUpdating", DeepDataType, resolve =
+    Field("a", OptionType(StringType))(_.value.a),
+    Field("b", OptionType(StringType))(_.value.b),
+    Field("c", OptionType(StringType))(_.value.c),
+    Field("d", OptionType(StringType))(_.value.d),
+    Field("e", OptionType(StringType))(_.value.e),
+    Field("f", OptionType(StringType))(_.value.f),
+    Field("ctxUpdating", DeepDataType)(
       ctx => UpdateCtx(ctx.value.deepColor("blue"))(v => ctx.ctx.copy(color = v.color))),
-    Field("ctxUpdatingFut", DeepDataType, resolve =
+    Field("ctxUpdatingFut", DeepDataType)(
       ctx => UpdateCtx(Future.successful(ctx.value.deepColor("orange")))(v => ctx.ctx.copy(color = v.color))),
-    Field("ctxUpdatingDef", DeepDataType, resolve =
+    Field("ctxUpdatingDef", DeepDataType)(
       ctx => UpdateCtx(LightColor(ctx.value, "magenta"))(v => ctx.ctx.copy(color = v.color))),
-    Field("ctxUpdatingDefFut", DeepDataType, resolve =
+    Field("ctxUpdatingDefFut", DeepDataType)(
       ctx => UpdateCtx(DeferredFutureValue(Future.successful(LightColor(ctx.value, "red"))))(v => ctx.ctx.copy(color = v.color))),
-    Field("def", DeepDataType, resolve = ctx => LightColor(ctx.value, "magenta")),
-    Field("defFut", DeepDataType, resolve = ctx => DeferredFutureValue(Future.successful(LightColor(ctx.value, "red")))),
-    Field("defFail", OptionType(DeepDataType), resolve = ctx => FailColor(ctx.value, "magenta")),
-    Field("defFutFail", OptionType(DeepDataType), resolve = ctx => DeferredFutureValue(Future.successful(FailColor(ctx.value, "red")))),
-    Field("pic", OptionType(StringType),
-      arguments = Argument("size", OptionInputType(IntType)) :: Nil,
-      resolve = ctx => ctx.value.pic(ctx.argOpt[Int]("size"))),
-    Field("deep", OptionType(DeepDataType), resolve = _.value.deep),
-    Field("future", OptionType(DataType), resolve = _.value.future)
+    Field("def", DeepDataType)(ctx => LightColor(ctx.value, "magenta")),
+    Field("defFut", DeepDataType)(ctx => DeferredFutureValue(Future.successful(LightColor(ctx.value, "red")))),
+    Field("defFail", OptionType(DeepDataType))(ctx => FailColor(ctx.value, "magenta")),
+    Field("defFutFail", OptionType(DeepDataType))(ctx => DeferredFutureValue(Future.successful(FailColor(ctx.value, "red")))),
+    Field("pic", OptionType(StringType), arguments = Argument("size", OptionInputType(IntType)) :: Nil)(
+      ctx => ctx.value.pic(ctx.args.arg[Option[Int]]("size"))),
+    Field("deep", OptionType(DeepDataType))(_.value.deep),
+    Field("future", OptionType(DataType))(_.value.future)
   ))
 
   val ParallelFragmentType: ObjectType[Unit, Unit] = ObjectType("Type", () => fields[Unit, Unit](
-    Field("a", OptionType(StringType), resolve = _ => "Apple"),
-    Field("b", OptionType(StringType), resolve = _ => "Banana"),
-    Field("c", OptionType(StringType), resolve = _ => "Cherry"),
-    Field("deep", OptionType(ParallelFragmentType), resolve = _ => ())
+    Field("a", OptionType(StringType))(_ => "Apple"),
+    Field("b", OptionType(StringType))(_ => "Banana"),
+    Field("c", OptionType(StringType))(_ => "Cherry"),
+    Field("deep", OptionType(ParallelFragmentType))(_ => ())
   ))
 
   "Execute: Handles basic execution tasks" should {
@@ -185,7 +184,7 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
       var resolvedCtx: Option[String] = None
 
       val schema = Schema(ObjectType("Type", fields[Unit, Thing](
-        Field("a", OptionType(StringType), resolve = ctx => {resolvedCtx = ctx.value.a; ctx.value.a}))))
+        Field("a", OptionType(StringType))(ctx => {resolvedCtx = ctx.value.a; ctx.value.a}))))
 
       val Success(doc) = QueryParser.parse("query Example { a }")
       Executor(schema, Thing(Some("thing"))).execute(doc).await should be (Map("data" -> Map("a" -> "thing")))
@@ -193,12 +192,16 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
     }
 
     "correctly threads arguments" in {
-      var resolvedArgs: Map[String, Any] = Map.empty
+      var resolvedArgs: Args = Args.empty
 
       val schema = Schema(ObjectType("Type", fields[Unit, Unit](
         Field("b", OptionType(StringType),
-          arguments = Argument("numArg", OptionInputType(IntType)) :: Argument("stringArg", OptionInputType(StringType)) :: Nil,
-          resolve = ctx => {resolvedArgs = ctx.args; None}))))
+            arguments =
+              Argument("numArg", OptionInputType(IntType)) ::
+              Argument("stringArg", OptionInputType(StringType)) :: Nil) { ctx =>
+          resolvedArgs = ctx.args
+          None
+        })))
 
       val Success(doc) = QueryParser.parse("""
         query Example {
@@ -207,7 +210,7 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
       """)
 
       Executor(schema).execute(doc).await
-      resolvedArgs should be (Map("numArg" -> 123, "stringArg" -> "foo"))
+      resolvedArgs should be (Args(Map("numArg" -> 123, "stringArg" -> "foo")))
     }
 
     "null out error subtrees" in {
@@ -222,15 +225,15 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
       }
 
       val schema = Schema(ObjectType("Type", fields[Unit, Data](
-        Field("sync", OptionType(StringType), resolve = _.value.sync),
-        Field("syncError", OptionType(StringType), resolve = _.value.syncError),
-        Field("async", OptionType(StringType), resolve = _.value.async),
-        Field("asyncReject", OptionType(StringType), resolve = ctx => ctx.value.asyncReject),
-        Field("asyncError", OptionType(StringType), resolve = _.value.asyncError),
-        Field("syncDeferError", OptionType(StringType),
-          resolve = ctx => DeferredValue(throw new IllegalStateException("Error getting syncDeferError"))),
-        Field("asyncDeferError", OptionType(StringType),
-          resolve = _ => DeferredFutureValue(Future.failed(throw new IllegalStateException("Error getting asyncDeferError"))))
+        Field("sync", OptionType(StringType))(_.value.sync),
+        Field("syncError", OptionType(StringType))(_.value.syncError),
+        Field("async", OptionType(StringType))(_.value.async),
+        Field("asyncReject", OptionType(StringType))(ctx => ctx.value.asyncReject),
+        Field("asyncError", OptionType(StringType))(_.value.asyncError),
+        Field("syncDeferError", OptionType(StringType))(
+          ctx => DeferredValue(throw new IllegalStateException("Error getting syncDeferError"))),
+        Field("asyncDeferError", OptionType(StringType))(
+          _ => DeferredFutureValue(Future.failed(throw new IllegalStateException("Error getting asyncDeferError"))))
       )))
 
       val Success(doc) = QueryParser.parse("""
@@ -288,7 +291,7 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
 
     "use the inline operation if no operation is provided" in {
       val schema = Schema(ObjectType("Type", fields[Unit, Unit](
-        Field("a", OptionType(StringType), resolve = _ => "b"))))
+        Field("a", OptionType(StringType))(_ => "b"))))
       val Success(doc) = QueryParser.parse("{ a }")
 
       Executor(schema).execute(doc).await should be (Map("data" -> Map("a" -> "b")))
@@ -296,7 +299,7 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
 
     "use the only operation if no operation is provided" in {
       val schema = Schema(ObjectType("Type", fields[Unit, Unit](
-        Field("a", OptionType(StringType), resolve = _ => "b"))))
+        Field("a", OptionType(StringType))(_ => "b"))))
       val Success(doc) = QueryParser.parse("query Example { a }")
 
       Executor(schema).execute(doc).await should be (Map("data" -> Map("a" -> "b")))
@@ -304,7 +307,7 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
 
     "throw if no operation is provided with multiple operations" in {
       val schema = Schema(ObjectType("Type", fields[Unit, Unit](
-        Field("a", OptionType(StringType), resolve = _ => "b"))))
+        Field("a", OptionType(StringType))(_ => "b"))))
       val Success(doc) = QueryParser.parse("query Example { a } query OtherExample { a }")
 
       Executor(schema).execute(doc).await should be (
@@ -313,8 +316,8 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
 
     "use the query schema for queries" in {
       val schema = Schema(
-        ObjectType("Q", fields[Unit, Unit](Field("a", OptionType(StringType), resolve = _ => "b"))),
-        Some(ObjectType("M", fields[Unit, Unit](Field("c", OptionType(StringType), resolve = _ => "d")))))
+        ObjectType("Q", fields[Unit, Unit](Field("a", OptionType(StringType))(_ => "b"))),
+        Some(ObjectType("M", fields[Unit, Unit](Field("c", OptionType(StringType))(_ => "d")))))
       val Success(doc) = QueryParser.parse("query Q { a } mutation M { c }")
 
       Executor(schema).execute(doc, Some("Q")).await should be  (Map("data" -> Map("a" -> "b")))
@@ -322,7 +325,7 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
 
     "avoid recursion" in {
       val schema = Schema(ObjectType("Type", fields[Unit, Unit](
-        Field("a", OptionType(StringType), resolve = _ => "b"))))
+        Field("a", OptionType(StringType))(_ => "b"))))
 
       val Success(doc) = QueryParser.parse("""
         query Q {
@@ -342,8 +345,8 @@ class ExecutorSpec extends WordSpec with Matchers with AwaitSupport {
 
     "not include illegal fields in output" in {
       val schema = Schema(
-        ObjectType("Q", fields[Unit, Unit](Field("a", OptionType(StringType), resolve = _ => "b"))),
-        Some(ObjectType("M", fields[Unit, Unit](Field("c", OptionType(StringType), resolve = _ => "d")))))
+        ObjectType("Q", fields[Unit, Unit](Field("a", OptionType(StringType))(_ => "b"))),
+        Some(ObjectType("M", fields[Unit, Unit](Field("c", OptionType(StringType))(_ => "d")))))
       val Success(doc) = QueryParser.parse("mutation M { thisIsIllegalDontIncludeMe }")
 
       Executor(schema, queryValidator = QueryValidator.empty).execute(doc).await should be  (Map("data" -> Map()))

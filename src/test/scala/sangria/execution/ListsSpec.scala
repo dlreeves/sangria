@@ -19,8 +19,8 @@ class ListsSpec extends WordSpec with Matchers with AwaitSupport {
     val data = Data(testData)
 
     lazy val Type: ObjectType[Unit, Data] = ObjectType("DataType", () => fields[Unit, Data](
-      Field("test", testType, resolve = _.value.test),
-      Field("nest", OptionType(Type), resolve = _ => data)
+      Field("test", testType)(_.value.test),
+      Field("nest", OptionType(Type))(_ => data)
     ))
 
     val schema = Schema(Type)

@@ -259,19 +259,19 @@ class OverlappingFieldsCanBeMergedSpec extends WordSpec with ValidationSupport {
 
     "return types must be unambiguous" should {
       val StringBox = ObjectType("StringBox", fields[Unit, Unit](
-        Field("scalar", OptionType(StringType), resolve = _ => None)
+        Field("scalar", OptionType(StringType))(_ => None)
       ))
 
       val IntBox = ObjectType("IntBox", fields[Unit, Unit](
-        Field("scalar", OptionType(IntType), resolve = _ => None)
+        Field("scalar", OptionType(IntType))(_ => None)
       ))
 
       val NonNullStringBox1 = ObjectType("NonNullStringBox1", fields[Unit, Unit](
-        Field("scalar", StringType, resolve = _ => "")
+        Field("scalar", StringType)(_ => "")
       ))
 
       val NonNullStringBox2 = ObjectType("NonNullStringBox2", fields[Unit, Unit](
-        Field("scalar", StringType, resolve = _ => "")
+        Field("scalar", StringType)(_ => "")
       ))
 
       val BoxUnion = UnionType("BoxUnion", types = StringBox :: IntBox :: NonNullStringBox1 :: NonNullStringBox2 :: Nil)
@@ -281,17 +281,17 @@ class OverlappingFieldsCanBeMergedSpec extends WordSpec with ValidationSupport {
           ObjectType("Edge", fields[Unit, Unit](
             Field("node", OptionType(
               ObjectType("Node", fields[Unit, Unit](
-                Field("id", OptionType(IDType), resolve = _ => ""),
-                Field("name", OptionType(StringType), resolve = _ => "")
+                Field("id", OptionType(IDType))(_ => ""),
+                Field("name", OptionType(StringType))(_ => "")
               ))
-            ), resolve = _ => ())
+            ))(_ => ())
           ))
-        ))), resolve = _ => Nil)
+        ))))(_ => Nil)
       ))
 
       val schema = Schema(ObjectType("QueryRoot", fields[Unit, Unit](
-        Field("boxUnion", OptionType(BoxUnion), resolve = _ => ()),
-        Field("connection", OptionType(Connection), resolve = _ => ())
+        Field("boxUnion", OptionType(BoxUnion))(_ => ()),
+        Field("connection", OptionType(Connection))(_ => ())
       )))
 
       "conflicting scalar return types" in expectInvalid(schema, new OverlappingFieldsCanBeMerged :: Nil,

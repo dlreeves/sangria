@@ -35,13 +35,13 @@ package object introspection {
       "`ofType` is a valid field."))
   ))
 
-  val __Field = ObjectType("__Field", () => List[Field[Unit, Field[_, _]]](
-    Field("name", StringType, resolve = _.value.name),
-    Field("description", OptionType(StringType), resolve = _.value.description),
-    Field("args", ListType(__InputValue), resolve = _.value.arguments),
-    Field("type", __Type, resolve = false -> _.value.fieldType),
-    Field("isDeprecated", BooleanType, resolve = _.value.deprecationReason.isDefined),
-    Field("deprecationReason", OptionType(StringType), resolve = _.value.deprecationReason)
+  val __Field = ObjectType("__Field", () => fields[Unit, Field[_, _]](
+    Field("name", StringType)(_.value.name),
+    Field("description", OptionType(StringType))(_.value.description),
+    Field("args", ListType(__InputValue))(_.value.arguments.arguments),
+    Field("type", __Type)(false -> _.value.fieldType),
+    Field("isDeprecated", BooleanType)(_.value.deprecationReason.isDefined),
+    Field("deprecationReason", OptionType(StringType))(_.value.deprecationReason)
   ))
 
   val includeDeprecated = Argument("includeDeprecated", OptionInputType(BooleanType), false)
@@ -83,32 +83,30 @@ package object introspection {
   }
 
   val __Type: ObjectType[Unit, (Boolean, Type)] = ObjectType("__Type", () => List[Field[Unit, (Boolean, Type)]](
-    Field("kind", __TypeKind, resolve = ctx => getKind(ctx.value)),
-    Field("name", OptionType(StringType), resolve = ctx => getKind(ctx.value) match {
+    Field("kind", __TypeKind)(ctx => getKind(ctx.value)),
+    Field("name", OptionType(StringType))(ctx => getKind(ctx.value) match {
       case TypeKind.NonNull | TypeKind.List => None
       case _ => findNamed(ctx.value._2) map (_.name)
     }),
-    Field("description", OptionType(StringType), resolve = ctx => getKind(ctx.value) match {
+    Field("description", OptionType(StringType))(ctx => getKind(ctx.value) match {
       case TypeKind.NonNull | TypeKind.List => None
       case _ => findNamed(ctx.value._2) flatMap (_.description)
     }),
-    Field("fields", OptionType(ListType(__Field)),
-      arguments = includeDeprecated :: Nil,
-      resolve = ctx => {
-        val incDep = ctx.arg(includeDeprecated)
-        val (_, tpe) = ctx.value
+    Field("fields", OptionType(ListType(__Field)), arguments = includeDeprecated :: Nil) { ctx =>
+      val incDep: Boolean = ctx.args.arg(includeDeprecated)
+      val (_, tpe) = ctx.value
 
-        tpe match {
-          case t: ObjectLikeType[_, _] if incDep => Some(t.fields.asInstanceOf[List[Field[_, _]]])
-          case t: ObjectLikeType[_, _] => Some(t.fields.asInstanceOf[List[Field[_, _]]].filter(_.deprecationReason.isEmpty))
-          case _ => None
-        }
-      }),
-    Field("interfaces", OptionType(ListType(__Type)), resolve = _.value._2 match {
+      tpe match {
+        case t: ObjectLikeType[_, _] if incDep => Some(t.fields.asInstanceOf[List[Field[_, _]]])
+        case t: ObjectLikeType[_, _] => Some(t.fields.asInstanceOf[List[Field[_, _]]].filter(_.deprecationReason.isEmpty))
+        case _ => None
+      }
+    },
+    Field("interfaces", OptionType(ListType(__Type)))(_.value._2 match {
       case t: ObjectType[_, _] => Some(t.interfaces.asInstanceOf[List[Type]] map (true -> _))
       case _ => None
     }),
-    Field("possibleTypes", OptionType(ListType(__Type)), resolve = ctx => ctx.value._2 match {
+    Field("possibleTypes", OptionType(ListType(__Type)))(ctx => ctx.value._2 match {
       case t: AbstractType => ctx.schema.possibleTypes.get(t.name) map { tpe =>
         t match {
           case _: UnionType[_] => tpe map (true -> _)
@@ -117,22 +115,20 @@ package object introspection {
       }
       case _ => None
     }),
-    Field("enumValues", OptionType(ListType(__EnumValue)),
-      arguments = includeDeprecated :: Nil,
-      resolve = ctx => {
-        val incDep = ctx.arg(includeDeprecated)
+    Field("enumValues", OptionType(ListType(__EnumValue)), arguments = includeDeprecated :: Nil) { ctx =>
+      val incDep = ctx.args.arg(includeDeprecated)
 
-        ctx.value._2 match {
-          case enum: EnumType[_] if incDep => Some(enum.values)
-          case enum: EnumType[_] => Some(enum.values.filter(_.deprecationReason.isEmpty))
-          case _ => None
-        }
-      }),
-    Field("inputFields", OptionType(ListType(__InputValue)), resolve = _.value._2 match {
+      ctx.value._2 match {
+        case enum: EnumType[_] if incDep => Some(enum.values)
+        case enum: EnumType[_] => Some(enum.values.filter(_.deprecationReason.isEmpty))
+        case _ => None
+      }
+    },
+    Field("inputFields", OptionType(ListType(__InputValue)))(_.value._2 match {
       case io: InputObjectType[_] => Some(io.fields)
       case _ => None
     }),
-    Field("ofType", OptionType(__Type), resolve = ctx => getKind(ctx.value) match {
+    Field("ofType", OptionType(__Type))(ctx => getKind(ctx.value) match {
       case TypeKind.NonNull => Some(true -> ctx.value._2)
       case TypeKind.List => findListType(ctx.value._2) map (false -> _)
       case _ => None
@@ -142,31 +138,31 @@ package object introspection {
   val __InputValue: ObjectType[Unit, InputValue[_]] = ObjectType(
     name = "__InputValue",
     fields = List[Field[Unit, InputValue[_]]](
-      Field("name", StringType, resolve = _.value.name),
-      Field("description", OptionType(StringType), resolve = _.value.description),
-      Field("type", __Type, resolve = false -> _.value.inputValueType),
-      Field("defaultValue", OptionType(StringType),
-        resolve = ctx => ctx.value.defaultValue.map(ctx.renderInputValueCompact(_, ctx.value.inputValueType)))
+      Field("name", StringType)(_.value.name),
+      Field("description", OptionType(StringType))(_.value.description),
+      Field("type", __Type)(false -> _.value.inputValueType),
+      Field("defaultValue", OptionType(StringType))(
+        ctx => ctx.value.defaultValue.map(ctx.renderInputValueCompact(_, ctx.value.inputValueType)))
     ))
 
   val __EnumValue: ObjectType[Unit, EnumValue[_]] = ObjectType(
     name = "__EnumValue",
     fields = List[Field[Unit, EnumValue[_]]](
-      Field("name", StringType, resolve = _.value.name),
-      Field("description", OptionType(StringType), resolve = _.value.description),
-      Field("isDeprecated", BooleanType, resolve = _.value.deprecationReason.isDefined),
-      Field("deprecationReason", OptionType(StringType), resolve = _.value.deprecationReason)
+      Field("name", StringType)(_.value.name),
+      Field("description", OptionType(StringType))(_.value.description),
+      Field("isDeprecated", BooleanType)(_.value.deprecationReason.isDefined),
+      Field("deprecationReason", OptionType(StringType))(_.value.deprecationReason)
     ))
 
   val __Directive = ObjectType(
     name = "__Directive",
-    fields = fields[Unit, Directive](
-      Field("name", StringType, resolve = _.value.name),
-      Field("description", OptionType(StringType), resolve = _.value.description),
-      Field("args", ListType(__InputValue), resolve = _.value.arguments),
-      Field("onOperation", BooleanType, resolve = _.value.onOperation),
-      Field("onFragment", BooleanType, resolve = _.value.onFragment),
-      Field("onField", BooleanType, resolve = _.value.onField)
+    fields = fields[Unit, Directive[_]](
+      Field("name", StringType)(_.value.name),
+      Field("description", OptionType(StringType))(_.value.description),
+      Field("args", ListType(__InputValue))(_.value.arguments.arguments),
+      Field("onOperation", BooleanType)(_.value.onOperation),
+      Field("onFragment", BooleanType)(_.value.onFragment),
+      Field("onField", BooleanType)(_.value.onField)
     ))
 
 
@@ -178,30 +174,30 @@ package object introspection {
         "the server, as well as the entry points for query and " +
         "mutation operations.",
     fields = List[Field[Unit, Schema[Any, Any]]](
-      Field("types", ListType(__Type), Some("A list of all types supported by this server."), resolve = _.value.typeList map (true -> _)),
-      Field("queryType", __Type, Some("The type that query operations will be rooted at."), resolve = true -> _.value.query),
+      Field("types", ListType(__Type), Some("A list of all types supported by this server."))(_.value.typeList map (true -> _)),
+      Field("queryType", __Type, Some("The type that query operations will be rooted at."))(true -> _.value.query),
       Field("mutationType", OptionType(__Type),
-        Some("If this server supports mutation, the type that mutation operations will be rooted at."), resolve = _.value.mutation map (true -> _)),
+        Some("If this server supports mutation, the type that mutation operations will be rooted at."))(_.value.mutation map (true -> _)),
       Field("directives", ListType(__Directive),
-        Some("A list of all directives supported by this server."), resolve = _.value.directives)))
+        Some("A list of all directives supported by this server."))(_.value.directives)))
 
   val SchemaMetaField: Field[Unit, Unit] = Field(
     name = "__schema",
     fieldType = __Schema,
-    description = Some("Access the current type schema of this server."),
-    resolve = _.schema.asInstanceOf[Schema[Any, Any]])
+    description = Some("Access the current type schema of this server.")
+  )(_.schema.asInstanceOf[Schema[Any, Any]])
 
   val TypeMetaField: Field[Unit, Unit] = Field(
     name = "__type",
     fieldType = OptionType(__Type),
     description = Some("Request the type information of a single type."),
-    arguments = Argument("name", StringType) :: Nil,
-    resolve = ctx => ctx.schema.types get ctx.arg[String]("name") map (true -> _._2))
+    arguments = Argument("name", StringType) :: Nil)(
+    resolve = ctx => ctx.schema.types get ctx.args.arg[String]("name") map (true -> _._2))
 
   val TypeNameMetaField: Field[Unit, Unit] = Field(
     name = "__typename",
     fieldType = StringType,
-    description = Some("The name of the current Object type at runtime."),
+    description = Some("The name of the current Object type at runtime."))(
     resolve = ctx => ctx.parentType.name)
 
   lazy val Success(introspectionQuery) = QueryParser.parse(

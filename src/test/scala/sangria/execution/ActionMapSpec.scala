@@ -22,29 +22,29 @@ class ActionMapSpec extends WordSpec with Matchers with AwaitSupport {
   }
 
   val ColorType = ObjectType("Color", fields[Unit, Color](
-    Field("name", StringType, resolve = _.value.name)))
+    Field("name", StringType)(_.value.name)))
 
 
   val QueryType = ObjectType("Query", fields[Unit, Unit](
-    Field("value", StringType, resolve = _ =>
+    Field("value", StringType)(_ =>
       Value("red").map("light-" + _)),
-    Field("doubleMap", StringType, resolve = _ =>
+    Field("doubleMap", StringType)(_ =>
       Value("red").map("light-" + _).map(_ + "-color")),
-    Field("future", StringType, resolve = _ =>
+    Field("future", StringType)(_ =>
       FutureValue(Future.successful("green")).map("light-" + _)),
-    Field("futureDouble", ColorType, resolve = _ =>
+    Field("futureDouble", ColorType)(_ =>
       FutureValue(Future.successful("green")).map("light-" + _).map(Color(_))),
-    Field("futureTriple", StringType, resolve = _ =>
+    Field("futureTriple", StringType)(_ =>
       FutureValue(Future.successful("green")).map("light-" + _).map(Color(_)).map("super-" + _.name)),
-    Field("deferred", StringType, resolve = _ =>
+    Field("deferred", StringType)(_ =>
       DeferredValue(ColorDefer(123)).map(x => x + 345)),
-    Field("futureDeferred", StringType, resolve = _ =>
+    Field("futureDeferred", StringType)(_ =>
       DeferredFutureValue(Future.successful(ColorDefer(34))).map(x => x + 56)),
-    Field("futureDeferredDouble", StringType, resolve = _ =>
+    Field("futureDeferredDouble", StringType)(_ =>
       DeferredFutureValue(Future.successful(ColorDefer(34))).map(x => x + 576).map("Yay! " + _ + " +++")),
-    Field("futureDeferredTriple", StringType, resolve = _ =>
+    Field("futureDeferredTriple", StringType)(_ =>
       DeferredFutureValue(Future.successful(ColorDefer(34))).map(x => x + 576).map(Color(_)).map(c => "Yay! " + c.name + " +++")),
-    Field("ctxUpdate", ColorType, resolve = ctx =>
+    Field("ctxUpdate", ColorType)(ctx =>
       UpdateCtx(DeferredFutureValue(Future.successful(ColorDefer(11)))){v => require(v == "[56]"); ctx.ctx}.map("!" + _ + "?").map(x => x + 576).map(Color(_)).map(c => "(" + c.name + ")").map(Color(_)))
   ))
 

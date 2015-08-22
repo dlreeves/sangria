@@ -21,8 +21,8 @@
 
   ```scala
   val DogType = ObjectType("Dog", fields[Unit, Dog](
-    Field("name", OptionType(StringType), resolve = _.value.name),
-    Field("barks", OptionType(BooleanType), resolve = _.value.barks)))
+    Field("name", OptionType(StringType))(_.value.name),
+    Field("barks", OptionType(BooleanType))(_.value.barks)))
   ```
 * `withPossibleTypes` was introduced on `InterfaceType` and `Field` in order to provide a convenient way to the list of possible implementation types of interface
 * Added convenience method `Executor.execute`

@@ -15,19 +15,19 @@ class UnionInterfaceSpec extends WordSpec with Matchers with AwaitSupport with G
   case class Person(name: Option[String], pets: Option[List[Option[AnyRef]]], friends: Option[List[Option[Named]]]) extends Named
 
   val NamedType = InterfaceType("Named", fields[Unit, Named](
-    Field("name", OptionType(StringType), resolve = _.value.name)))
+    Field("name", OptionType(StringType))(_.value.name)))
 
   val DogType = ObjectType("Dog", interfaces = interfaces[Unit, Dog](NamedType), fields = fields[Unit, Dog](
-    Field("barks", OptionType(BooleanType), resolve = _.value.barks)))
+    Field("barks", OptionType(BooleanType))(_.value.barks)))
 
   val CatType = ObjectType("Cat", interfaces = interfaces[Unit, Cat](NamedType), fields = fields[Unit, Cat](
-    Field("meows", OptionType(BooleanType), resolve = _.value.meows)))
+    Field("meows", OptionType(BooleanType))(_.value.meows)))
 
   val PetType = UnionType[Unit]("Pet", types = DogType :: CatType :: Nil)
 
   val PersonType = ObjectType("Person", interfaces = interfaces[Unit, Person](NamedType), fields = fields[Unit, Person](
-    Field("pets", OptionType(ListType(OptionType(PetType))), resolve = _.value.pets),
-    Field("friends", OptionType(ListType(OptionType(NamedType))), resolve = _.value.friends)))
+    Field("pets", OptionType(ListType(OptionType(PetType))))(_.value.pets),
+    Field("friends", OptionType(ListType(OptionType(NamedType))))(_.value.friends)))
   
   val TestSchema = Schema(PersonType)
 

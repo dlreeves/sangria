@@ -41,14 +41,14 @@ class NotNullSpec extends WordSpec with Matchers with AwaitSupport with GraphQlS
   }
 
   val DataType: ObjectType[Unit, TestSubject] = ObjectType("DataType", () => fields[Unit, TestSubject](
-    Field("sync", OptionType(StringType), resolve = _.value.sync),
-    Field("nonNullSync", StringType, resolve = _.value.nonNullSync),
-    Field("promise", OptionType(StringType), resolve = _.value.promise),
-    Field("nonNullPromise", StringType, resolve = _.value.nonNullPromise),
-    Field("nest", OptionType(DataType), resolve = _.value.nest),
-    Field("nonNullNest", DataType, resolve = _.value.nonNullNest),
-    Field("promiseNest", OptionType(DataType), resolve = _.value.promiseNest),
-    Field("nonNullPromiseNest", DataType, resolve = _.value.nonNullPromiseNest)))
+    Field("sync", OptionType(StringType))(_.value.sync),
+    Field("nonNullSync", StringType)(_.value.nonNullSync),
+    Field("promise", OptionType(StringType))(_.value.promise),
+    Field("nonNullPromise", StringType)(_.value.nonNullPromise),
+    Field("nest", OptionType(DataType))(_.value.nest),
+    Field("nonNullNest", DataType)(_.value.nonNullNest),
+    Field("promiseNest", OptionType(DataType))(_.value.promiseNest),
+    Field("nonNullPromiseNest", DataType)(_.value.nonNullPromiseNest)))
 
   val schema = Schema(DataType)
 

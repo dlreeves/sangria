@@ -23,7 +23,7 @@ class ProvidedNonNullArguments extends ValidationRule {
           case Some(fieldDef) =>
             val astArgs = args.map(_.name).toSet
 
-            val errors = fieldDef.arguments.toVector.collect {
+            val errors = fieldDef.arguments.arguments.toVector.collect {
               case argDef if !astArgs.contains(argDef.name) && !argDef.argumentType.isInstanceOf[OptionInputType[_]] =>
                 MissingFieldArgViolation(name, argDef.name, SchemaRenderer.renderTypeName(argDef.argumentType), ctx.sourceMapper, pos.toList)
             }
@@ -37,7 +37,7 @@ class ProvidedNonNullArguments extends ValidationRule {
           case Some(dirDef) =>
             val astArgs = args.map(_.name).toSet
 
-            val errors = dirDef.arguments.toVector.collect {
+            val errors = dirDef.arguments.arguments.toVector.collect {
               case argDef if !astArgs.contains(argDef.name) && !argDef.argumentType.isInstanceOf[OptionInputType[_]] =>
                 MissingFieldArgViolation(name, argDef.name, SchemaRenderer.renderTypeName(argDef.argumentType), ctx.sourceMapper, pos.toList)
             }

@@ -30,10 +30,10 @@ class ValueCollector[Ctx, Input](schema: Schema[_, _], inputVars: Input, sourceM
     else Success(Map(values.collect {case (name, Right(v)) => name -> v}: _*))
   }
 
-  def getArgumentValues(argumentDefs: List[Argument[_]], argumentAsts: List[ast.Argument], variables: Map[String, Any]): Try[Map[String, Any]] = {
+  def getArgumentValues(argumentDefs: Arguments[_], argumentAsts: List[ast.Argument], variables: Map[String, Any]): Try[Map[String, Any]] = {
     val astArgMap = argumentAsts groupBy (_.name) mapValues (_.head)
 
-    val res = argumentDefs.foldLeft(Map.empty[String, Either[List[Violation], Any]]) {
+    val res = argumentDefs.arguments.foldLeft(Map.empty[String, Either[List[Violation], Any]]) {
       case (acc, argDef) =>
         val argPath = argDef.name :: Nil
         val astValue = astArgMap get argDef.name map (_.value)

@@ -58,41 +58,41 @@ class MutationSpec extends WordSpec with Matchers with GraphQlSupport {
   case class UserContext(num: Int)
 
   val NumberHolderType = ObjectType("NumberHolder", fields[UserContext, NumberHolder](
-    Field("theNumber", OptionType(IntType), resolve = _.value.theNumber.get()),
-    Field("userCtx", OptionType(IntType), resolve = _.ctx.num)
+    Field("theNumber", OptionType(IntType))(_.value.theNumber.get()),
+    Field("userCtx", OptionType(IntType))(_.ctx.num)
   ))
 
   val NewNumberArg = Argument("newNumber", OptionInputType(IntType))
 
   val schema = Schema(
     ObjectType("Query", fields[UserContext, Root](
-      Field("numberHolder", OptionType(NumberHolderType), resolve = _.value.numberHolder)
+      Field("numberHolder", OptionType(NumberHolderType))(_.value.numberHolder)
     )),
     Some(ObjectType("Mutation", fields[UserContext, Root](
       Field("immediatelyChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(ctx.value.immediatelyChangeTheNumber(ctx.arg(NewNumberArg)))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(ctx.value.immediatelyChangeTheNumber(ctx.args.arg(NewNumberArg).get))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("deferChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(SuccessfulDefer(ctx.value.immediatelyChangeTheNumber(ctx.arg(NewNumberArg))))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(SuccessfulDefer(ctx.value.immediatelyChangeTheNumber(ctx.args.arg(NewNumberArg).get)))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("deferFailChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(FailedDefer(ctx.value.immediatelyChangeTheNumber(ctx.arg(NewNumberArg))))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(FailedDefer(ctx.value.immediatelyChangeTheNumber(ctx.args.arg(NewNumberArg).get)))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("deferFutChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(DeferredFutureValue(Future.successful(SuccessfulDefer(ctx.value.immediatelyChangeTheNumber(ctx.arg(NewNumberArg))))))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(DeferredFutureValue(Future.successful(SuccessfulDefer(ctx.value.immediatelyChangeTheNumber(ctx.args.arg(NewNumberArg).get)))))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("deferFutFailChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(DeferredFutureValue(Future.successful(FailedDefer(ctx.value.immediatelyChangeTheNumber(ctx.arg(NewNumberArg))))))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(DeferredFutureValue(Future.successful(FailedDefer(ctx.value.immediatelyChangeTheNumber(ctx.args.arg(NewNumberArg).get)))))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("promiseToChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(ctx.value.promiseToChangeTheNumber(ctx.arg(NewNumberArg)))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(ctx.value.promiseToChangeTheNumber(ctx.args.arg(NewNumberArg).get))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("failToChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(ctx.value.failToChangeTheNumber(ctx.arg(NewNumberArg)))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(ctx.value.failToChangeTheNumber(ctx.args.arg(NewNumberArg).get))(v => ctx.ctx.copy(num = 10 + v.theNumber.get()))),
       Field("promiseAndFailToChangeTheNumber", OptionType(NumberHolderType),
-        arguments = NewNumberArg :: Nil,
-        resolve = ctx => UpdateCtx(ctx.value.promiseAndFailToChangeTheNumber(ctx.arg(NewNumberArg)))(v => ctx.ctx.copy(num = 10 + v.theNumber.get())))
+        arguments = NewNumberArg :: Nil)(
+        ctx => UpdateCtx(ctx.value.promiseAndFailToChangeTheNumber(ctx.args.arg(NewNumberArg).get))(v => ctx.ctx.copy(num = 10 + v.theNumber.get())))
     )))
   )
 

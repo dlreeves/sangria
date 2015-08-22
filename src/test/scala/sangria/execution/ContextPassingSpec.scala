@@ -27,20 +27,20 @@ class ContextPassingSpec extends WordSpec with Matchers with AwaitSupport {
   class Cake extends ColorComponent with NameComponent with PersonComponent
 
   val ColorType = ObjectType("Color", fields[ColorComponent with NameComponent, Unit](
-    Field("colorName", StringType, resolve = _.ctx.color),
-    Field("name", StringType, resolve = _.ctx.name)))
+    Field("colorName", StringType)(_.ctx.color),
+    Field("name", StringType)(_.ctx.name)))
 
   val NameType = ObjectType("Name", fields[NameComponent, Unit](
-    Field("name", StringType, resolve = _.ctx.name)))
+    Field("name", StringType)(_.ctx.name)))
 
   val PersonType = ObjectType("Person", fields[PersonComponent, Unit](
-    Field("fullName", StringType, resolve = _.ctx.fullName),
-    Field("name", NameType, resolve = _ => ())))
+    Field("fullName", StringType)(_.ctx.fullName),
+    Field("name", NameType)(_ => ())))
 
 
   val QueryType = ObjectType("Query", fields[Cake, Unit](
-    Field("color", ColorType, resolve = _ => ()),
-    Field("person", PersonType, resolve = _ => ())
+    Field("color", ColorType)(_ => ()),
+    Field("person", PersonType)(_ => ())
   ))
 
   val schema = Schema(QueryType)

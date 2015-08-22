@@ -192,8 +192,8 @@ case class Field[Ctx, Val] private (
     name: String,
     fieldType: OutputType[_],
     description: Option[String],
-    arguments: List[Argument[_]],
-    resolve: Context[Ctx, Val] => Action[Ctx, _],
+    arguments: Arguments[_],
+    resolve: Context[Ctx, Val, _] => Action[Ctx, _],
     deprecationReason: Option[String],
     manualPossibleTypes: () => List[ObjectType[_, _]]) extends Named with HasArguments {
   def withPossibleTypes(possible: PossibleObject[Ctx, Val]*) = copy(manualPossibleTypes = () => possible.toList map (_.objectType))
@@ -201,15 +201,24 @@ case class Field[Ctx, Val] private (
 }
 
 object Field {
-  def apply[Ctx, Val, Res, Out](
+//  def apply[Ctx, Val, Res, Out, Args](
+//      name: String,
+//      fieldType: OutputType[Out],
+//      description: Option[String] = None,
+//      arguments: Arguments[Args] = Arguments.empty,
+//      resolve: Context[Ctx, Val, Args] => Action[Ctx, Res],
+//      possibleTypes: => List[PossibleObject[_, _]] = Nil,
+//      deprecationReason: Option[String] = None)(implicit ev: ValidOutType[Res, Out]) =
+//    Field[Ctx, Val](name, fieldType, description, arguments, resolve.asInstanceOf[Context[Ctx, Val, _] => Action[Ctx, _]], deprecationReason, () => possibleTypes map (_.objectType))
+
+  def apply[Ctx, Val, Res, Out, Args](
       name: String,
       fieldType: OutputType[Out],
       description: Option[String] = None,
-      arguments: List[Argument[_]] = Nil,
-      resolve: Context[Ctx, Val] => Action[Ctx, Res],
+      arguments: Arguments[Args] = Arguments.empty,
       possibleTypes: => List[PossibleObject[_, _]] = Nil,
-      deprecationReason: Option[String] = None)(implicit ev: ValidOutType[Res, Out]) =
-    Field[Ctx, Val](name, fieldType, description, arguments, resolve, deprecationReason, () => possibleTypes map (_.objectType))
+      deprecationReason: Option[String] = None)(resolve: Context[Ctx, Val, Args] => Action[Ctx, Res])(implicit ev: ValidOutType[Res, Out]) =
+    Field[Ctx, Val](name, fieldType, description, arguments, resolve.asInstanceOf[Context[Ctx, Val, _] => Action[Ctx, _]], deprecationReason, () => possibleTypes map (_.objectType))
 }
 
 @implicitNotFound(msg = "${Res} is invalid type for the resulting GraphQL type ${Out}.")
@@ -241,52 +250,75 @@ case class Argument[T] private (
 }
 
 object Argument {
-  def apply[T, Default](
+  def apply[T, Default, Res](
       name: String,
       argumentType: InputType[T],
       description: String,
-      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[WithDefault[T], Res], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[Res] =
     Argument(name, argumentType, Some(description), Some(defaultValue), um)
 
-  def apply[T, Default](
+  def apply[T, Default, Res](
       name: String,
       argumentType: InputType[T],
-      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[WithDefault[T], Res], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[Res] =
     Argument(name, argumentType, None, Some(defaultValue), um)
 
-  def apply[T](
+  def apply[T, Res](
       name: String,
       argumentType: InputType[T],
-      description: String)(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+      description: String)(implicit res: ArgumentType[T, Res], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[Res] =
     Argument(name, argumentType, Some(description), None, um)
 
-  def apply[T](
+  def apply[T, Res](
       name: String,
-      argumentType: InputType[T])(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+      argumentType: InputType[T])(implicit res: ArgumentType[T, Res], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[Res] =
     Argument(name, argumentType, None, None, um)
 }
 
-trait ArgumentType[T] {
-  type Res
-}
+sealed trait WithDefault[T]
+
+sealed trait ArgumentType[T, Res]
 
 object ArgumentType extends ArgumentTypeLowPrio {
-  implicit def optionArgTpe[T] = new ArgumentType[Option[T]] {
-    type Res = T
-  }
+
+  implicit def defaultOptArgTpe[T]: ArgumentType[WithDefault[Option[T]], T] =
+    StdArgumentType.asInstanceOf[ArgumentType[WithDefault[Option[T]], T]]
+
+  implicit def enumDefaultOptArgTpe[T]: ArgumentType[WithDefault[Option[EnumInput[T]]], T] =
+    StdArgumentType.asInstanceOf[ArgumentType[WithDefault[Option[EnumInput[T]]], T]]
+
+  implicit def enumDefaultArgTpe[T]: ArgumentType[WithDefault[EnumInput[T]], T] =
+    StdArgumentType.asInstanceOf[ArgumentType[WithDefault[EnumInput[T]], T]]
+
+  implicit def enumOptArgTpe[T]: ArgumentType[Option[EnumInput[T]], Option[T]] =
+    StdArgumentType.asInstanceOf[ArgumentType[Option[EnumInput[T]], Option[T]]]
+
+  implicit def enumArgTpe[T]: ArgumentType[EnumInput[T], T] =
+    StdArgumentType.asInstanceOf[ArgumentType[EnumInput[T], T]]
 }
 
 trait ArgumentTypeLowPrio {
-  implicit def defaultArgTpe[T] = new ArgumentType[T] {
-    type Res = T
-  }
+  protected object StdArgumentType extends ArgumentType[Any, Any]
+
+  implicit def defaultArgTpe[T]: ArgumentType[WithDefault[T], T] =
+    StdArgumentType.asInstanceOf[ArgumentType[WithDefault[T], T]]
+
+  implicit def argTpe[T]: ArgumentType[T, T] =
+    StdArgumentType.asInstanceOf[ArgumentType[T, T]]
 }
 
 case class Arguments[T](arguments: Seq[Argument[_]])(implicit ev: InputTypeUnmarshaller[T, _ <: ResultMarshaller])
 
-object Arguments {
-  implicit def seqToArguments(arguments: Seq[Argument[_]]): Arguments[Map[String, Any]] =
-    Arguments[Map[String, Any]](arguments)
+object Arguments extends ArgumentsLowPrioImplicits {
+  implicit def seqToArguments(arguments: Seq[Argument[_]]): Arguments[Args] =
+    Arguments[Args](arguments)
+
+  val empty: Arguments[Args] = Arguments[Args](Nil)
+}
+
+trait ArgumentsLowPrioImplicits {
+  implicit def seqToArguments[T](arguments: Seq[Argument[_]])(implicit ev: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Arguments[T] =
+    Arguments[T](arguments)
 }
 
 case class EnumType[T](
@@ -328,8 +360,6 @@ case class InputObjectType[T] private (
 }
 
 object InputObjectType {
-  type InputObjectRes = Map[String, Any]
-
   def apply[T](name: String, fields: List[InputField[_]]): InputObjectType[T] =
     InputObjectType(name, None, fieldsFn = Named.checkFieldsFn(fields))
   def apply[T](name: String, description: String, fields: List[InputField[_]]): InputObjectType[T] =
@@ -356,14 +386,14 @@ case class OptionType[T](ofType: OutputType[T]) extends OutputType[Option[T]]
 case class OptionInputType[T](ofType: InputType[T]) extends InputType[Option[T]]
 
 sealed trait HasArguments {
-  def arguments: List[Argument[_]]
+  def arguments: Arguments[_]
 }
 
-case class Directive(
+case class Directive[Args](
   name: String,
   description: Option[String] = None,
-  arguments: List[Argument[_]] = Nil,
-  shouldInclude: DirectiveContext => Boolean,
+  arguments: Arguments[Args] = Arguments.empty,
+  shouldInclude: DirectiveContext[Args] => Boolean,
   onOperation: Boolean,
   onFragment: Boolean,
   onField: Boolean) extends HasArguments
@@ -372,7 +402,7 @@ case class Schema[Ctx, Val](
     query: ObjectType[Ctx, Val],
     mutation: Option[ObjectType[Ctx, Val]] = None,
     additionalTypes: List[Type with Named] = Nil,
-    directives: List[Directive] = BuiltinDirectives) {
+    directives: List[Directive[_]] = BuiltinDirectives) {
   lazy val types: Map[String, (Int, Type with Named)] = {
     def updated(priority: Int, name: String, tpe: Type with Named, result: Map[String, (Int, Type with Named)]) =
       if (result contains name) result else result.updated(name, priority -> tpe)
@@ -392,7 +422,7 @@ case class Schema[Ctx, Val](
         case t: ObjectLikeType[_, _] =>
           val own = t.fields.foldLeft(updated(priority, t.name, t, result)) {
             case (acc, field) =>
-              val fromArgs = field.arguments.foldLeft(collectTypes(priority, field.fieldType, acc)) {
+              val fromArgs = field.arguments.arguments.foldLeft(collectTypes(priority, field.fieldType, acc)) {
                 case (aacc, arg) => collectTypes(priority, arg.argumentType, aacc)
               }
 

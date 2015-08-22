@@ -28,33 +28,33 @@ class ExecutorSchemaSpec extends WordSpec with Matchers with AwaitSupport {
   case class ArticleDeferred(id: String) extends Deferred[Option[Article]]
 
   val BlogImageType = ObjectType("Image", fields[Unit, Image](
-    Field("url", OptionType(StringType), resolve = _.value.url),
-    Field("width", OptionType(IntType), resolve = _.value.width),
-    Field("height", OptionType(IntType), resolve = _.value.height)))
+    Field("url", OptionType(StringType))(_.value.url),
+    Field("width", OptionType(IntType))(_.value.width),
+    Field("height", OptionType(IntType))(_.value.height)))
 
   val BlogAuthorType = ObjectType("Author", () => fields[Unit, Author](
-    Field("id", OptionType(StringType), resolve = _.value.id),
-    Field("name", OptionType(StringType), resolve = _.value.name),
+    Field("id", OptionType(StringType))(_.value.id),
+    Field("name", OptionType(StringType))(_.value.name),
     Field("pic", OptionType(BlogImageType),
-      arguments = Argument("width", OptionInputType(IntType)) :: Argument("height", OptionInputType(IntType)) :: Nil,
-      resolve = ctx => for {w <- ctx.argOpt[Int]("width"); h <- ctx.argOpt[Int]("height"); pic <- ctx.value.pic(w, h)} yield pic),
-    Field("recentArticle", OptionType(BlogArticleType),
-      resolve = ctx => ctx.value.recentArticle map (ra => DeferredValue(ArticleDeferred(ra))) getOrElse Value(None))))
+      arguments = Argument("width", OptionInputType(IntType)) :: Argument("height", OptionInputType(IntType)) :: Nil)(
+      ctx => for {w <- ctx.args.arg[Option[Int]]("width"); h <- ctx.args.arg[Option[Int]]("height"); pic <- ctx.value.pic(w, h)} yield pic),
+    Field("recentArticle", OptionType(BlogArticleType))(
+      ctx => ctx.value.recentArticle map (ra => DeferredValue(ArticleDeferred(ra))) getOrElse Value(None))))
 
   val BlogArticleType: ObjectType[Unit, Article] = ObjectType("Article", fields[Unit, Article](
-    Field("id", StringType, resolve = _.value.id),
-    Field("isPublished", OptionType(BooleanType), resolve = _.value.isPublished),
-    Field("author", OptionType(BlogAuthorType), resolve = _.value.author),
-    Field("title", OptionType(StringType), resolve = _.value.title),
-    Field("body", OptionType(StringType), resolve = _.value.body),
-    Field("keywords", OptionType(ListType(OptionType(StringType))), resolve = _.value.keywords)))
+    Field("id", StringType)(_.value.id),
+    Field("isPublished", OptionType(BooleanType))(_.value.isPublished),
+    Field("author", OptionType(BlogAuthorType))(_.value.author),
+    Field("title", OptionType(StringType))(_.value.title),
+    Field("body", OptionType(StringType))(_.value.body),
+    Field("keywords", OptionType(ListType(OptionType(StringType))))(_.value.keywords)))
 
   val BlogQueryType = ObjectType("Query", fields[Unit, Unit](
     Field("article", OptionType(BlogArticleType),
-      arguments = Argument("id", OptionInputType(IDType)) :: Nil,
-      resolve = ctx => ctx.argOpt[String]("id") flatMap (id => article(id.toInt))),
-    Field("feed", OptionType(ListType(OptionType(BlogArticleType))),
-      resolve = _ => (1 to 10).toList.map(article))))
+      arguments = Argument("id", OptionInputType(IDType)) :: Nil)(
+      resolve = ctx => ctx.args.arg[Option[String]]("id") flatMap (id => article(id.toInt))),
+    Field("feed", OptionType(ListType(OptionType(BlogArticleType))))(
+      _ => (1 to 10).toList.map(article))))
 
   val BlogSchema = Schema(BlogQueryType)
 

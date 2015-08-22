@@ -168,7 +168,7 @@ class TypeInfo(schema: Schema[_, _]) {
   private val fieldDefStack: MutableStack[Option[Field[_, _]]] = MutableStack()
   private val ancestorStack: MutableStack[ast.AstNode] = MutableStack()
 
-  var directive: Option[Directive] = None
+  var directive: Option[Directive[_]] = None
   var argument: Option[Argument[_]] = None
 
   def tpe = typeStack.headOption.flatten
@@ -209,7 +209,7 @@ class TypeInfo(schema: Schema[_, _]) {
         inputTypeStack push schema.getInputType(vd.tpe)
       case a: ast.Argument =>
         argument = directive orElse fieldDef flatMap { withArgs =>
-          withArgs.arguments find (_.name == a.name)
+          withArgs.arguments.arguments find (_.name == a.name)
         }
         inputTypeStack push argument.map(_.inputValueType)
       case ast.ListValue(values, _) =>

@@ -34,6 +34,8 @@ object InputTypeUnmarshaller {
       marshaller.fromMapNode(node.get)
   }
 
+  implicit object ArgsUnmarshaller extends SimpleUnmarshaller[Args](node => Args(InputScalaResultMarshaller.fromMapNode(node)))
+
   class EnumUnmarshaller[T] extends InputTypeUnmarshaller[EnumInput[T], InputScalaResultMarshaller.type] {
     type Result = T
 
@@ -104,6 +106,14 @@ object InputTypeUnmarshaller {
     override def marshaller = InputScalaResultMarshaller
     override def unmarshal(marshaller: InputScalaResultMarshaller.type)(node: Option[marshaller.Node]) =
       marshaller.fromBigIntNode(node.get)
+  }
+
+  class SimpleUnmarshaller[T](fn: InputScalaResultMarshaller.Node => T) extends InputTypeUnmarshaller[T, InputScalaResultMarshaller.type] {
+    type Result = T
+
+    override def marshaller = InputScalaResultMarshaller
+    override def unmarshal(marshaller: InputScalaResultMarshaller.type)(node: Option[marshaller.Node]) =
+      fn(node.get)
   }
 
   object InputScalaResultMarshaller extends ScalaResultMarshaller {

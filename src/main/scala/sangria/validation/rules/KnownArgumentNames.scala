@@ -18,7 +18,7 @@ class KnownArgumentNames extends ValidationRule {
         ctx.typeInfo.ancestors.drop(1).head match {
           case _: ast.Field =>
             ctx.typeInfo.fieldDef match {
-              case Some(field) if !field.arguments.exists(_.name == name) =>
+              case Some(field) if !field.arguments.arguments.exists(_.name == name) =>
                 Left(Vector(UnknownArgViolation(
                   name,
                   field.name,
@@ -31,7 +31,7 @@ class KnownArgumentNames extends ValidationRule {
 
           case _: ast.Directive =>
             ctx.typeInfo.directive match {
-              case Some(dir) if !dir.arguments.exists(_.name == name) =>
+              case Some(dir) if !dir.arguments.arguments.exists(_.name == name) =>
                 Left(Vector(UnknownDirectiveArgViolation(
                   name,
                   dir.name,

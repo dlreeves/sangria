@@ -17,9 +17,9 @@ class ProjectorSpec extends WordSpec with Matchers with AwaitSupport {
   case class ProductDefer(productIds: List[String]) extends Deferred[List[Right[String, Product]]]
 
   val VariantType = ObjectType("Variant", () => fields[Unit, Variant](
-    Field("id", IDType, resolve = _.value.id),
-    Field("typeId", StringType, resolve = NoProjection(_ => "variant")),
-    Field("relatedProducts", ListType(ProductType), resolve = Projection("rp", Projector(1, (ctx, projected) => projected match {
+    Field("id", IDType)(_.value.id),
+    Field("typeId", StringType)(NoProjection(_ => "variant")),
+    Field("relatedProducts", ListType(ProductType))(Projection("rp", Projector(1, (ctx, projected) => projected match {
       case Vector(ProjectedName("id", _)) => Value(ctx.value.relatedProductIds map (Left(_)))
       case _ => ProductDefer(ctx.value.relatedProductIds)
     })))
@@ -27,18 +27,18 @@ class ProjectorSpec extends WordSpec with Matchers with AwaitSupport {
 
   val ProductType: ObjectType[Unit, Either[String, Product]] =
     ObjectType("Product", List[Field[Unit, Either[String, Product]]](
-      Field("id", IDType, resolve = _.value.fold(identity, _.id)),
-      Field("typeId", StringType, resolve = NoProjection(_ => "product")),
-      Field("variants", ListType(VariantType), resolve = _.value.right.get.variants)
+      Field("id", IDType)(_.value.fold(identity, _.id)),
+      Field("typeId", StringType)(NoProjection(_ => "product")),
+      Field("variants", ListType(VariantType))(_.value.right.get.variants)
     ))
 
   val QueryType = ObjectType("Query", fields[Ctx, Unit](
-    Field("products", ListType(ProductType), resolve = _.ctx.products map (Right(_))),
-    Field("projectAll", ListType(ProductType), resolve = Projector((ctx, proj) => {
+    Field("products", ListType(ProductType))(_.ctx.products map (Right(_))),
+    Field("projectAll", ListType(ProductType))(Projector((ctx, proj) => {
       ctx.ctx.allProjections = proj
       ctx.ctx.products map (Right(_))
     })),
-    Field("projectOne", ListType(ProductType), resolve = Projector(1, (ctx, proj) => {
+    Field("projectOne", ListType(ProductType))(Projector(1, (ctx, proj) => {
       ctx.ctx.oneLevelprojections = proj
       ctx.ctx.products map (Right(_))
     }))

@@ -7,32 +7,32 @@ class TypeFieldUniquenessSpec extends WordSpec with Matchers {
   "ObjectType" should {
     "allow unique fields" in {
       ObjectType("Test", fields[Unit, Unit](
-        Field("a", StringType, resolve = _ => "foo"),
-        Field("b", StringType, resolve = _ => "foo"),
-        Field("c", StringType, resolve = _ => "foo")
+        Field("a", StringType)(_ => "foo"),
+        Field("b", StringType)(_ => "foo"),
+        Field("c", StringType)(_ => "foo")
       ))
 
       ObjectType("Test", () => fields[Unit, Unit](
-        Field("a", StringType, resolve = _ => "foo"),
-        Field("b", StringType, resolve = _ => "foo"),
-        Field("c", StringType, resolve = _ => "foo")
+        Field("a", StringType)(_ => "foo"),
+        Field("b", StringType)(_ => "foo"),
+        Field("c", StringType)(_ => "foo")
       )).fields
     }
 
     "disallow non-unique fields" in {
       an [IllegalArgumentException] should be thrownBy {
         ObjectType("Test", fields[Unit, Unit](
-          Field("a", StringType, resolve = _ => "foo"),
-          Field("b", StringType, resolve = _ => "foo"),
-          Field("a", StringType, resolve = _ => "foo")
+          Field("a", StringType)(_ => "foo"),
+          Field("b", StringType)(_ => "foo"),
+          Field("a", StringType)(_ => "foo")
         ))
       }
 
       an [IllegalArgumentException] should be thrownBy {
         ObjectType("Test", () => fields[Unit, Unit](
-          Field("a", StringType, resolve = _ => "foo"),
-          Field("b", StringType, resolve = _ => "foo"),
-          Field("a", StringType, resolve = _ => "foo")
+          Field("a", StringType)(_ => "foo"),
+          Field("b", StringType)(_ => "foo"),
+          Field("a", StringType)(_ => "foo")
         )).fields
       }
     }
@@ -41,32 +41,32 @@ class TypeFieldUniquenessSpec extends WordSpec with Matchers {
   "InterfaceType" should {
     "allow unique fields" in {
       InterfaceType("Test", fields[Unit, Unit](
-        Field("a", StringType, resolve = _ => "foo"),
-        Field("b", StringType, resolve = _ => "foo"),
-        Field("c", StringType, resolve = _ => "foo")
+        Field("a", StringType)(_ => "foo"),
+        Field("b", StringType)(_ => "foo"),
+        Field("c", StringType)(_ => "foo")
       ))
 
       InterfaceType("Test", () => fields[Unit, Unit](
-        Field("a", StringType, resolve = _ => "foo"),
-        Field("b", StringType, resolve = _ => "foo"),
-        Field("c", StringType, resolve = _ => "foo")
+        Field("a", StringType)(_ => "foo"),
+        Field("b", StringType)(_ => "foo"),
+        Field("c", StringType)(_ => "foo")
       )).fields
     }
 
     "disallow non-unique fields" in {
       an [IllegalArgumentException] should be thrownBy {
         InterfaceType("Test", fields[Unit, Unit](
-          Field("a", StringType, resolve = _ => "foo"),
-          Field("b", StringType, resolve = _ => "foo"),
-          Field("a", StringType, resolve = _ => "foo")
+          Field("a", StringType)(_ => "foo"),
+          Field("b", StringType)(_ => "foo"),
+          Field("a", StringType)(_ => "foo")
         ))
       }
 
       an [IllegalArgumentException] should be thrownBy {
         InterfaceType("Test", () => fields[Unit, Unit](
-          Field("a", StringType, resolve = _ => "foo"),
-          Field("b", StringType, resolve = _ => "foo"),
-          Field("a", StringType, resolve = _ => "foo")
+          Field("a", StringType)(_ => "foo"),
+          Field("b", StringType)(_ => "foo"),
+          Field("a", StringType)(_ => "foo")
         )).fields
       }
     }

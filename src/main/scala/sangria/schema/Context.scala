@@ -56,41 +56,41 @@ object UpdateCtx {
   def apply[Ctx, Val](action: LeafAction[Ctx, Val])(newCtx: Val => Ctx): UpdateCtx[Ctx, Val] = new UpdateCtx(action, newCtx)
 }
 
-abstract class NoProjection[Ctx, Val, Res] extends (Context[Ctx, Val] => Action[Ctx, Res])
+abstract class NoProjection[Ctx, Val, Res, Args] extends (Context[Ctx, Val, Args] => Action[Ctx, Res])
 
 object NoProjection {
-  def apply[Ctx, Val, Res](fn: Context[Ctx, Val] => Action[Ctx, Res]) =
-    new NoProjection[Ctx, Val, Res] {
-      override def apply(ctx: Context[Ctx, Val]) = fn(ctx)
+  def apply[Ctx, Val, Res, Args](fn: Context[Ctx, Val, Args] => Action[Ctx, Res]) =
+    new NoProjection[Ctx, Val, Res, Args] {
+      override def apply(ctx: Context[Ctx, Val, Args]) = fn(ctx)
     }
 }
 
-abstract class Projection[Ctx, Val, Res](val projectedName: String, val fn: Context[Ctx, Val] => Action[Ctx, Res]) extends (Context[Ctx, Val] => Action[Ctx, Res])
+abstract class Projection[Ctx, Val, Res, Args](val projectedName: String, val fn: Context[Ctx, Val, Args] => Action[Ctx, Res]) extends (Context[Ctx, Val, Args] => Action[Ctx, Res])
 
 object Projection {
-  def apply[Ctx, Val, Res](projectedName: String, fn: Context[Ctx, Val] => Action[Ctx, Res]) =
-    new Projection[Ctx, Val, Res](projectedName, fn) {
-      override def apply(ctx: Context[Ctx, Val]) = fn(ctx)
+  def apply[Ctx, Val, Res, Args](projectedName: String, fn: Context[Ctx, Val, Args] => Action[Ctx, Res]) =
+    new Projection[Ctx, Val, Res, Args](projectedName, fn) {
+      override def apply(ctx: Context[Ctx, Val, Args]) = fn(ctx)
     }
 }
 
-trait Projector[Ctx, Val, Res] extends (Context[Ctx, Val] => Action[Ctx, Res]) {
+trait Projector[Ctx, Val, Res, Args] extends (Context[Ctx, Val, Args] => Action[Ctx, Res]) {
   val maxLevel: Int = Integer.MAX_VALUE
-  def apply(ctx: Context[Ctx, Val], projected: Vector[ProjectedName]): Action[Ctx, Res]
+  def apply(ctx: Context[Ctx, Val, Args], projected: Vector[ProjectedName]): Action[Ctx, Res]
 }
 
 object Projector {
-  def apply[Ctx, Val, Res](fn: (Context[Ctx, Val], Vector[ProjectedName]) => Action[Ctx, Res]) =
-    new Projector[Ctx, Val, Res] {
-      def apply(ctx: Context[Ctx, Val], projected: Vector[ProjectedName]) = fn(ctx, projected)
-      override def apply(ctx: Context[Ctx, Val]) = throw new IllegalStateException("Default apply should not be called on projector!")
+  def apply[Ctx, Val, Res, Args](fn: (Context[Ctx, Val, Args], Vector[ProjectedName]) => Action[Ctx, Res]) =
+    new Projector[Ctx, Val, Res, Args] {
+      def apply(ctx: Context[Ctx, Val, Args], projected: Vector[ProjectedName]) = fn(ctx, projected)
+      override def apply(ctx: Context[Ctx, Val, Args]) = throw new IllegalStateException("Default apply should not be called on projector!")
     }
 
-  def apply[Ctx, Val, Res](levels: Int, fn: (Context[Ctx, Val], Vector[ProjectedName]) => Action[Ctx, Res]) =
-    new Projector[Ctx, Val, Res] {
+  def apply[Ctx, Val, Res, Args](levels: Int, fn: (Context[Ctx, Val, Args], Vector[ProjectedName]) => Action[Ctx, Res]) =
+    new Projector[Ctx, Val, Res, Args] {
       override val maxLevel = levels
-      def apply(ctx: Context[Ctx, Val], projected: Vector[ProjectedName]) = fn(ctx, projected)
-      override def apply(ctx: Context[Ctx, Val]) = throw new IllegalStateException("Default apply should not be called on projector!")
+      def apply(ctx: Context[Ctx, Val, Args], projected: Vector[ProjectedName]) = fn(ctx, projected)
+      override def apply(ctx: Context[Ctx, Val, Args]) = throw new IllegalStateException("Default apply should not be called on projector!")
     }
 }
 
@@ -107,12 +107,13 @@ trait Deferred[+T]
 
 case class MappingDeferred[A, +B](deferred: Deferred[A], mapFn: A => B) extends Deferred[B]
 
-trait WithArguments {
-  def args: Map[String, Any]
+case class Args(args: Map[String, Any]) {
   def arg[T](arg: Argument[T]) = args(arg.name).asInstanceOf[T]
   def arg[T](name: String) = args(name).asInstanceOf[T]
-  def argOpt[T](arg: Argument[T]) = args.get(arg.name).asInstanceOf[Option[T]]
-  def argOpt[T](name: String) = args.get(name).asInstanceOf[Option[T]]
+}
+
+object Args {
+  val empty = Args(Map.empty)
 }
 
 trait WithInputTypeRendering {
@@ -154,17 +155,17 @@ trait WithInputTypeRendering {
   }
 }
 
-case class Context[Ctx, Val](
+case class Context[Ctx, Val, Args](
   value: Val,
   ctx: Ctx,
-  args: Map[String, Any],
+  args: Args,
   schema: Schema[Ctx, Val],
   field: Field[Ctx, Val],
   parentType: ObjectType[Ctx, Any],
   marshaller: ResultMarshaller,
-  astFields: List[ast.Field]) extends WithArguments with WithInputTypeRendering
+  astFields: List[ast.Field]) extends WithInputTypeRendering
 
-case class DirectiveContext(selection: ast.WithDirectives, directive: Directive, args: Map[String, Any]) extends WithArguments
+case class DirectiveContext[Args](selection: ast.WithDirectives, directive: Directive[Args], args: Args)
 
 trait DeferredResolver {
   def resolve(deferred: List[Deferred[Any]]): List[Future[Any]]

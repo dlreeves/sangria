@@ -1,5 +1,7 @@
 package sangria.schema
 
+import sangria.execution.ResultMarshaller
+
 import language.{implicitConversions, existentials}
 
 import sangria.{introspection, ast}
@@ -233,7 +235,8 @@ case class Argument[T] private (
     name: String,
     argumentType: InputType[_],
     description: Option[String],
-    defaultValue: Option[_]) extends InputValue[T] with Named {
+    defaultValue: Option[_],
+    unmarshaller: InputTypeUnmarshaller[_, _ <: ResultMarshaller]) extends InputValue[T] with Named {
   def inputValueType = argumentType
 }
 
@@ -242,25 +245,25 @@ object Argument {
       name: String,
       argumentType: InputType[T],
       description: String,
-      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
-    Argument(name, argumentType, Some(description), Some(defaultValue))
+      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+    Argument(name, argumentType, Some(description), Some(defaultValue), um)
 
   def apply[T, Default](
       name: String,
       argumentType: InputType[T],
-      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
-    Argument(name, argumentType, None, Some(defaultValue))
+      defaultValue: Default)(implicit ev: ValidOutType[Default, T], res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+    Argument(name, argumentType, None, Some(defaultValue), um)
 
   def apply[T](
       name: String,
       argumentType: InputType[T],
-      description: String)(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
-    Argument(name, argumentType, Some(description), None)
+      description: String)(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+    Argument(name, argumentType, Some(description), None, um)
 
   def apply[T](
       name: String,
-      argumentType: InputType[T])(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _]): Argument[res.Res] =
-    Argument(name, argumentType, None, None)
+      argumentType: InputType[T])(implicit res: ArgumentType[T], um: InputTypeUnmarshaller[T, _ <: ResultMarshaller]): Argument[res.Res] =
+    Argument(name, argumentType, None, None, um)
 }
 
 trait ArgumentType[T] {
@@ -279,7 +282,12 @@ trait ArgumentTypeLowPrio {
   }
 }
 
-case class Arguments[T](argument: Seq[Argument[_]])(implicit ev: InputTypeUnmarshaller[T, _])
+case class Arguments[T](arguments: Seq[Argument[_]])(implicit ev: InputTypeUnmarshaller[T, _ <: ResultMarshaller])
+
+object Arguments {
+  implicit def seqToArguments(arguments: Seq[Argument[_]]): Arguments[Map[String, Any]] =
+    Arguments[Map[String, Any]](arguments)
+}
 
 case class EnumType[T](
     name: String,
